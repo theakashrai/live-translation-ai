@@ -329,3 +329,11 @@ class AudioBuffer:
         self.vad_history.clear()
         self.speech_start_idx = None
         self.speech_end_idx = None
+
+    def get_duration_seconds(self) -> float:
+        """Get the duration of audio currently in the buffer.
+
+        Returns:
+            Duration in seconds of the buffered audio
+        """
+        return min(self.samples_written / self.sample_rate, self.max_duration_s)

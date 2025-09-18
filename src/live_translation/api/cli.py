@@ -158,7 +158,11 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
             device = click.prompt("Select device index", type=int, default=0)
 
     async def run_streaming() -> None:
-        streaming_translator = StreamingTranslator(pipeline)
+        streaming_translator = StreamingTranslator(
+            pipeline,
+            source_language=source,
+            target_language=target,
+        )
 
         def on_translation(response) -> None:
             console.print(Panel(

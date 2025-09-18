@@ -26,6 +26,8 @@ class AudioProcessor:
         translation_pipeline: TranslationPipeline,
         chunk_duration_s: Optional[float] = None,
         vad_threshold: Optional[float] = None,
+        source_language: str = "auto",
+        target_language: str = "en",
     ) -> None:
         """Initialize audio processor.
 
@@ -33,10 +35,14 @@ class AudioProcessor:
             translation_pipeline: The translation pipeline to use
             chunk_duration_s: Duration between translations (uses config default if None)
             vad_threshold: Voice activity detection threshold (uses config default if None)
+            source_language: Source language code
+            target_language: Target language code
         """
         self.translation_pipeline = translation_pipeline
         self.chunk_duration_s = chunk_duration_s or 3.0
         self.vad_threshold = vad_threshold or settings.vad_threshold
+        self.source_language = source_language
+        self.target_language = target_language
 
         # Initialize buffer with settings from config
         self.audio_buffer = AudioBuffer(
@@ -79,6 +85,19 @@ class AudioProcessor:
                 return self._perform_translation(start_time)
 
         except Exception as e:
+            # Check if this is just an empty/silent chunk
+            try:
+                audio_array = np.frombuffer(chunk.data, dtype=np.int16)
+                audio_float = audio_array.astype(np.float32) / 32768.0
+                rms_energy = np.sqrt(
+                    np.mean(audio_float ** 2)) if len(audio_array) > 0 else 0
+
+                # If it's just silence, don't count as failed translation
+                if rms_energy < 0.01:  # Very low threshold for silence detection
+                    return None
+            except:
+                pass  # If we can't check, proceed with error handling
+
             self.failed_translations += 1
             handle_audio_error(
                 e,
@@ -157,8 +176,8 @@ class AudioProcessor:
                 request = TranslationRequest(
                     audio_data=audio_bytes,
                     sample_rate=settings.sample_rate,
-                    source_language=settings.default_source_lang,
-                    target_language=settings.default_target_lang,
+                    source_language=self.source_language,
+                    target_language=self.target_language,
                 )
 
                 # Process translation
@@ -222,10 +241,14 @@ class StreamingTranslator:
         translation_pipeline: TranslationPipeline,
         sample_rate: int = 16000,
         chunk_duration_s: float = 3.0,
+        source_language: str = "auto",
+        target_language: str = "en",
     ) -> None:
         self.translation_pipeline = translation_pipeline
         self.sample_rate = sample_rate
         self.chunk_duration_s = chunk_duration_s
+        self.source_language = source_language
+        self.target_language = target_language
 
         self.audio_capture: Optional[AudioCapture] = None
         self.audio_processor: Optional[AudioProcessor] = None
@@ -259,6 +282,8 @@ class StreamingTranslator:
             self.audio_processor = AudioProcessor(
                 translation_pipeline=self.translation_pipeline,
                 chunk_duration_s=self.chunk_duration_s,
+                source_language=self.source_language,
+                target_language=self.target_language,
             )
 
             # Start audio capture
@@ -315,6 +340,12 @@ class StreamingTranslator:
                     await asyncio.sleep(0.01)
                     continue
 
+                # Check if chunk contains meaningful audio before processing
+                if self._is_silence(chunk):
+                    # Skip silent chunks without logging as error
+                    await asyncio.sleep(0.001)
+                    continue
+
                 # Process chunk
                 response = self.audio_processor.process_audio_chunk(chunk)
 
@@ -331,6 +362,35 @@ class StreamingTranslator:
             except Exception as e:
                 logger.error(f"Error in processing loop: {str(e)}")
                 await asyncio.sleep(0.1)  # Brief pause before continuing
+
+    def _is_silence(self, chunk: AudioChunk) -> bool:
+        """Check if an audio chunk contains only silence or noise.
+
+        Args:
+            chunk: The audio chunk to check
+
+        Returns:
+            True if the chunk is considered silent/empty
+        """
+        try:
+            # Convert bytes to numpy array for energy calculation
+            audio_array = np.frombuffer(chunk.data, dtype=np.int16)
+            if len(audio_array) == 0:
+                return True
+
+            # Calculate RMS energy
+            audio_float = audio_array.astype(np.float32) / 32768.0
+            rms_energy = np.sqrt(np.mean(audio_float ** 2))
+
+            # Consider it silence if energy is below a threshold
+            # Use a lower threshold than VAD to catch more subtle speech
+            silence_threshold = self.audio_processor.vad_threshold * \
+                0.3 if self.audio_processor else 0.01
+            return rms_energy < silence_threshold
+
+        except Exception:
+            # If we can't analyze the chunk, assume it's not silence to be safe
+            return False
 
     async def process_audio_file(
         self,
