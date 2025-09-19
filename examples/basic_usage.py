@@ -6,7 +6,10 @@ This script shows how to use the Live Translation AI library programmatically.
 """
 
 import asyncio
+import sys
 import time
+
+import numpy as np
 
 from live_translation.core.models import LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
@@ -66,8 +69,6 @@ async def main() -> None:
     print("-" * 40)
 
     # Generate some fake audio data (in real usage, this would come from microphone)
-    import numpy as np
-
     # Generate 2 seconds of sine wave
     sample_rate = 16000
     duration = 2.0
@@ -157,6 +158,6 @@ if __name__ == "__main__":
     except ImportError:
         print("❌ NumPy not available - skipping audio example")
         print("Install with: pip install numpy")
-        exit(1)
+        sys.exit(1)
 
     asyncio.run(main())

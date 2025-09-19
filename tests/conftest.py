@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+
 from live_translation.core.config import settings
 from live_translation.core.models import AudioChunk, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline

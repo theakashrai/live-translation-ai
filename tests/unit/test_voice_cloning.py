@@ -6,7 +6,9 @@ import os
 import tempfile
 from unittest.mock import MagicMock, Mock, patch
 
+import numpy as np
 import pytest
+
 from live_translation.core.models import TranslationRequest, TranslationResponse
 from live_translation.voice_cloning import (
     TranslationWithVoiceCloning,
@@ -161,8 +163,6 @@ class TestXTTSVoiceCloner:
 
     def test_audio_to_bytes_conversion(self):
         """Test audio array to bytes conversion."""
-        import numpy as np
-
         cloner = XTTSVoiceCloner()
         audio_array = np.array([0.5, -0.3, 0.1], dtype=np.float32)
 

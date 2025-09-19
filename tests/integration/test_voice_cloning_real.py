@@ -7,8 +7,12 @@ from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pytest
+import soundfile as sf
+
 from live_translation.voice_cloning import VoiceCloningRequest, XTTSVoiceCloner
+from live_translation.voice_cloning.models import VoiceCloningError
 
 
 class TestVoiceCloningIntegrationReal:
@@ -218,9 +222,6 @@ my dear grandson, where are you, I have been waiting since morning, come back ho
 
     def test_voice_cloning_error_handling(self, voice_cloner: XTTSVoiceCloner):
         """Test error handling with invalid inputs."""
-        # Import the exception class
-        from live_translation.voice_cloning.models import VoiceCloningError
-
         # Test with non-existent reference audio
         request = VoiceCloningRequest(
             text="Test text",
@@ -238,9 +239,6 @@ my dear grandson, where are you, I have been waiting since morning, come back ho
     ) -> None:
         """Save raw audio bytes as a WAV file using soundfile."""
         try:
-            import numpy as np
-            import soundfile as sf
-
             # Convert bytes to numpy array (assuming int16 format from XTTS)
             audio_array = np.frombuffer(audio_data, dtype=np.int16)
 

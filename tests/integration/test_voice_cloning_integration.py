@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 import tempfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
+
 from live_translation.core.models import TranslationRequest
 from live_translation.voice_cloning import (
     TranslationWithVoiceCloning,
@@ -49,7 +50,7 @@ class TestVoiceCloningIntegration:
         assert cloner.load_reference_voice(temp_reference_audio)
 
         # Test voice cloning request
-        request = VoiceCloningRequest(
+        VoiceCloningRequest(
             text="Hello, this is a test.",
             reference_audio_path=temp_reference_audio,
             target_language="en",
@@ -64,8 +65,6 @@ class TestVoiceCloningIntegration:
 
     def test_voice_cloning_pipeline_integration_mock(self, temp_reference_audio):
         """Test voice cloning pipeline integration with mocked components."""
-        from unittest.mock import Mock
-
         # Mock the translation pipeline
         mock_translation_pipeline = Mock()
         mock_translation_response = Mock()
@@ -133,8 +132,6 @@ class TestVoiceCloningIntegration:
 
     def test_voice_cloning_pipeline_fallback_on_error(self, temp_reference_audio):
         """Test that pipeline gracefully handles voice cloning errors."""
-        from unittest.mock import Mock
-
         # Mock the translation pipeline
         mock_translation_pipeline = Mock()
         mock_translation_response = Mock()
@@ -180,8 +177,6 @@ class TestVoiceCloningIntegration:
 
     def test_voice_cloning_disabled_by_setting(self, temp_reference_audio):
         """Test voice cloning when disabled by settings."""
-        from unittest.mock import Mock
-
         mock_translation_pipeline = Mock()
         mock_translation_response = Mock()
         mock_translation_response.original_text = "Hello"
@@ -217,8 +212,6 @@ class TestVoiceCloningIntegration:
 
     def test_reference_voice_path_override(self, temp_reference_audio):
         """Test overriding reference voice path per request."""
-        from unittest.mock import Mock
-
         # Create second temp file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             f.write(b"different_audio_data")

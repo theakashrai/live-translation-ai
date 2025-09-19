@@ -2,6 +2,8 @@
 
 
 import pytest
+from pydantic_core import ValidationError
+
 from live_translation.audio.processor import AudioProcessor
 from live_translation.core.models import AudioChunk, LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
@@ -183,8 +185,6 @@ class TestErrorHandling:
         """Test handling of invalid audio data."""
         # Test with empty audio data
         # Since TranslationRequest validates input, we need to catch pydantic errors
-        from pydantic_core import ValidationError
-
         try:
             request = TranslationRequest(
                 audio_data=b"",
@@ -209,8 +209,6 @@ class TestErrorHandling:
         self, translation_pipeline: TranslationPipeline
     ) -> None:
         """Test handling of unsupported language codes."""
-        from pydantic_core import ValidationError
-
         try:
             # Use valid request but language handling depends on implementation
             request = TranslationRequest(

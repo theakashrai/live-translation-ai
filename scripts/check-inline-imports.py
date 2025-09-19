@@ -109,7 +109,7 @@ def main() -> int:
 
         if inline_imports:
             print(f"\n{filepath}:")
-            for lineno, import_type, import_text in inline_imports:
+            for lineno, _, import_text in inline_imports:
                 print(f"  Line {lineno}: {import_text}")
                 total_issues += 1
 

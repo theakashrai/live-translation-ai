@@ -3,6 +3,8 @@
 from datetime import datetime
 
 import pytest
+from pydantic import ValidationError
+
 from live_translation.core.models import (
     AudioChunk,
     AudioFormat,
@@ -12,7 +14,6 @@ from live_translation.core.models import (
     TranslationRequest,
     TranslationResponse,
 )
-from pydantic import ValidationError
 
 
 class TestLanguageCode:
