@@ -65,12 +65,13 @@ repos:
         pass_filenames: true
 
       - id: pytest-check
-        name: pytest-check (fast unit tests only)
+        name: pytest-check (unit tests only, fast fail)
         entry: uv
         language: system
-        args: ["run", "pytest", "tests/unit/", "--tb=short", "-x", "--maxfail=1"]
+        args: ["run", "pytest", "tests/unit/", "--tb=line", "-x", "-q"]
         pass_filenames: false
-        always_run: true
+        always_run: false
+        files: '^(src/|tests/)'
 
       - id: jscpd-check
         name: Check for code duplication
