@@ -11,7 +11,7 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/psf/black
-    rev: 23.12.0
+    rev: 24.10.0
     hooks:
       - id: black
         language_version: python3.11
@@ -58,19 +58,19 @@ repos:
     hooks:
       - id: check-inline-imports
         name: Check for inline imports
-        entry: python
+        entry: uv
         language: system
-        args: ["scripts/check-inline-imports.py"]
+        args: ["run", "python", "scripts/check-inline-imports.py"]
         files: '\.py$'
         pass_filenames: true
 
       - id: pytest-check
         name: pytest-check
-        entry: pytest
+        entry: uv
         language: system
+        args: ["run", "pytest", "--tb=short"]
         pass_filenames: false
         always_run: true
-        args: [--tb=short]
 
       - id: jscpd-check
         name: Check for code duplication

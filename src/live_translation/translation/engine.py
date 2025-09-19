@@ -261,9 +261,11 @@ class TranslationPipeline:
                 original_text, detected_language = self.stt_engine.transcribe(
                     request.audio_data,
                     request.sample_rate,
-                    request.source_language
-                    if request.source_language != LanguageCode.AUTO
-                    else None,
+                    (
+                        request.source_language
+                        if request.source_language != LanguageCode.AUTO
+                        else None
+                    ),
                 )
             else:
                 raise TranslationError("No text or audio data provided")

@@ -1,6 +1,5 @@
 """Integration tests for the complete translation workflow."""
 
-
 from pydantic_core import ValidationError
 import pytest
 
