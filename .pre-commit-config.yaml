@@ -65,10 +65,10 @@ repos:
         pass_filenames: true
 
       - id: pytest-check
-        name: pytest-check
+        name: pytest-check (fast unit tests only)
         entry: uv
         language: system
-        args: ["run", "pytest", "--tb=short"]
+        args: ["run", "pytest", "tests/unit/", "--tb=short", "-x", "--maxfail=1"]
         pass_filenames: false
         always_run: true
 
