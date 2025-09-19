@@ -1,9 +1,9 @@
 """Core Pydantic models for translation requests and responses."""
 
+import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Union
-import uuid
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -59,45 +59,33 @@ class TranslationRequest(BaseModel):
 
     # Required fields
     source_language: Union[LanguageCode, str] = Field(
-        default=LanguageCode.AUTO,
-        description="Source language code"
+        default=LanguageCode.AUTO, description="Source language code"
     )
     target_language: Union[LanguageCode, str] = Field(
-        default=LanguageCode.ENGLISH,
-        description="Target language code"
+        default=LanguageCode.ENGLISH, description="Target language code"
     )
 
     # Input data (one must be provided)
     text: Optional[str] = Field(
-        default=None,
-        max_length=5000,
-        description="Text to translate"
+        default=None, max_length=5000, description="Text to translate"
     )
-    audio_data: Optional[bytes] = Field(
-        default=None,
-        description="Audio data as bytes"
-    )
+    audio_data: Optional[bytes] = Field(default=None, description="Audio data as bytes")
 
     # Audio settings
     sample_rate: int = Field(
-        default=16000,
-        ge=8000,
-        le=48000,
-        description="Audio sample rate in Hz"
+        default=16000, ge=8000, le=48000, description="Audio sample rate in Hz"
     )
     audio_format: AudioFormat = Field(
-        default=AudioFormat.WAV,
-        description="Audio format"
+        default=AudioFormat.WAV, description="Audio format"
     )
 
     # Metadata
     timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="Request timestamp"
+        default_factory=datetime.now, description="Request timestamp"
     )
     request_id: str = Field(
         default_factory=lambda: str(uuid.uuid4()),
-        description="Unique request identifier"
+        description="Unique request identifier",
     )
 
     @model_validator(mode="after")
@@ -122,43 +110,29 @@ class TranslationResponse(BaseModel):
     """Response model for translation operations."""
 
     # Core response data
-    original_text: str = Field(
-        description="Original text (transcribed or provided)"
-    )
-    translated_text: str = Field(
-        description="Translated text"
-    )
+    original_text: str = Field(description="Original text (transcribed or provided)")
+    translated_text: str = Field(description="Translated text")
 
     # Language information
     detected_language: Optional[str] = Field(
-        default=None,
-        description="Detected source language code"
+        default=None, description="Detected source language code"
     )
 
     # Quality metrics
     confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Translation confidence score"
+        default=0.0, ge=0.0, le=1.0, description="Translation confidence score"
     )
     processing_time_ms: float = Field(
-        ge=0.0,
-        description="Processing time in milliseconds"
+        ge=0.0, description="Processing time in milliseconds"
     )
 
     # Metadata
     timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="Response timestamp"
+        default_factory=datetime.now, description="Response timestamp"
     )
-    request_id: Optional[str] = Field(
-        default=None,
-        description="Associated request ID"
-    )
+    request_id: Optional[str] = Field(default=None, description="Associated request ID")
     model_info: Optional[dict[str, Any]] = Field(
-        default=None,
-        description="Information about models used"
+        default=None, description="Information about models used"
     )
 
     @field_validator("detected_language")
@@ -175,28 +149,12 @@ class AudioChunk(BaseModel):
     """Model for audio chunk processing."""
 
     data: bytes = Field(description="Audio data as bytes")
-    sample_rate: int = Field(
-        ge=8000,
-        le=48000,
-        description="Sample rate in Hz"
-    )
-    channels: int = Field(
-        default=1,
-        ge=1,
-        le=2,
-        description="Number of audio channels"
-    )
-    duration_ms: float = Field(
-        ge=0.0,
-        description="Duration in milliseconds"
-    )
-    sequence_id: int = Field(
-        ge=0,
-        description="Sequence ID for ordering"
-    )
+    sample_rate: int = Field(ge=8000, le=48000, description="Sample rate in Hz")
+    channels: int = Field(default=1, ge=1, le=2, description="Number of audio channels")
+    duration_ms: float = Field(ge=0.0, description="Duration in milliseconds")
+    sequence_id: int = Field(ge=0, description="Sequence ID for ordering")
     timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="Chunk timestamp"
+        default_factory=datetime.now, description="Chunk timestamp"
     )
 
     @property
@@ -214,31 +172,21 @@ class TranslationJob(BaseModel):
     """Model for tracking translation jobs."""
 
     job_id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="Unique job identifier"
+        default_factory=lambda: str(uuid.uuid4()), description="Unique job identifier"
     )
-    request: TranslationRequest = Field(
-        description="Original translation request"
-    )
-    status: JobStatus = Field(
-        default=JobStatus.PENDING,
-        description="Job status"
-    )
+    request: TranslationRequest = Field(description="Original translation request")
+    status: JobStatus = Field(default=JobStatus.PENDING, description="Job status")
     response: Optional[TranslationResponse] = Field(
-        default=None,
-        description="Translation response if completed"
+        default=None, description="Translation response if completed"
     )
     error_message: Optional[str] = Field(
-        default=None,
-        description="Error message if failed"
+        default=None, description="Error message if failed"
     )
     created_at: datetime = Field(
-        default_factory=datetime.now,
-        description="Job creation timestamp"
+        default_factory=datetime.now, description="Job creation timestamp"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.now,
-        description="Last update timestamp"
+        default_factory=datetime.now, description="Last update timestamp"
     )
 
     def mark_processing(self) -> None:
@@ -264,41 +212,26 @@ class SystemStatus(BaseModel):
 
     version: str = Field(description="Application version")
     models_loaded: dict[str, bool] = Field(
-        default_factory=dict,
-        description="Status of loaded models"
+        default_factory=dict, description="Status of loaded models"
     )
     device_info: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Device and hardware information"
+        default_factory=dict, description="Device and hardware information"
     )
     memory_usage_mb: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Memory usage in MB"
+        default=0.0, ge=0.0, description="Memory usage in MB"
     )
-    cache_size_mb: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Cache size in MB"
-    )
+    cache_size_mb: float = Field(default=0.0, ge=0.0, description="Cache size in MB")
     uptime_seconds: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="System uptime in seconds"
+        default=0.0, ge=0.0, description="System uptime in seconds"
     )
     active_jobs: int = Field(
-        default=0,
-        ge=0,
-        description="Number of active translation jobs"
+        default=0, ge=0, description="Number of active translation jobs"
     )
     total_translations: int = Field(
-        default=0,
-        ge=0,
-        description="Total translations performed"
+        default=0, ge=0, description="Total translations performed"
     )
     last_updated: datetime = Field(
-        default_factory=datetime.now,
-        description="Status last updated timestamp"
+        default_factory=datetime.now, description="Status last updated timestamp"
     )
 
     @property

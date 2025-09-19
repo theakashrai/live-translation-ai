@@ -5,8 +5,11 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, Protocol, Tuple
 
 from live_translation.core.exceptions import ModelLoadError, TranslationError
-from live_translation.core.models import (LanguageCode, TranslationRequest,
-                                          TranslationResponse)
+from live_translation.core.models import (
+    LanguageCode,
+    TranslationRequest,
+    TranslationResponse,
+)
 from live_translation.utils.logger import get_logger, log_performance
 
 logger = get_logger(__name__)
@@ -100,8 +103,8 @@ class SpeechToTextEngine(Protocol):
         ...
 
 
-class BaseTranslationEngine(ABC):
-    """Base class for translation engines."""
+class BaseModelEngine(ABC):
+    """Common base class for model-based engines."""
 
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         self.model_name = model_name
@@ -111,15 +114,7 @@ class BaseTranslationEngine(ABC):
 
     @abstractmethod
     def _load_model(self) -> Any:
-        """Load the translation model."""
-        pass
-
-    @abstractmethod
-    def _translate_impl(
-        self, text: str, source_lang: str, target_lang: str
-    ) -> str:
-        """Implement the actual translation logic."""
-        pass
+        """Load the model."""
 
     def load(self) -> None:
         """Load the model if not already loaded."""
@@ -128,19 +123,31 @@ class BaseTranslationEngine(ABC):
 
         start_time = time.time()
         try:
-            logger.info(f"Loading translation model: {self.model_name}")
+            logger.info(f"Loading model: {self.model_name}")
             self._model = self._load_model()
             self._loaded = True
             load_time_ms = (time.time() - start_time) * 1000
-            logger.info(
-                f"Model {self.model_name} loaded in {load_time_ms:.2f}ms")
+            logger.info(f"Model {self.model_name} loaded in {load_time_ms:.2f}ms")
             log_performance("model_load", load_time_ms, model=self.model_name)
         except Exception as e:
             raise ModelLoadError(
-                f"Failed to load translation model {self.model_name}: {str(e)}",
+                f"Failed to load model {self.model_name}: {str(e)}",
                 error_code="MODEL_LOAD_FAILED",
                 details={"model_name": self.model_name, "device": self.device},
             ) from e
+
+
+class BaseTranslationEngine(BaseModelEngine):
+    """Base class for translation engines."""
+
+    @abstractmethod
+    def _translate_impl(
+        self,
+        text: str,
+        source_language: str,
+        target_language: str,
+    ) -> str:
+        """Implement the actual translation logic."""
 
     def translate(
         self, text: str, source_lang: str = "auto", target_lang: str = "en"
@@ -177,47 +184,14 @@ class BaseTranslationEngine(ABC):
         return self._loaded
 
 
-class BaseSpeechToTextEngine(ABC):
+class BaseSpeechToTextEngine(BaseModelEngine):
     """Base class for speech-to-text engines."""
-
-    def __init__(self, model_name: str, device: str = "cpu") -> None:
-        self.model_name = model_name
-        self.device = device
-        self._loaded = False
-        self._model: Any = None
-
-    @abstractmethod
-    def _load_model(self) -> Any:
-        """Load the speech-to-text model."""
-        pass
 
     @abstractmethod
     def _transcribe_impl(
         self, audio_data: bytes, sample_rate: int, language: Optional[str]
     ) -> tuple[str, str]:
         """Implement the actual transcription logic."""
-        pass
-
-    def load(self) -> None:
-        """Load the model if not already loaded."""
-        if self._loaded:
-            return
-
-        start_time = time.time()
-        try:
-            logger.info(f"Loading speech-to-text model: {self.model_name}")
-            self._model = self._load_model()
-            self._loaded = True
-            load_time_ms = (time.time() - start_time) * 1000
-            logger.info(
-                f"Model {self.model_name} loaded in {load_time_ms:.2f}ms")
-            log_performance("model_load", load_time_ms, model=self.model_name)
-        except Exception as e:
-            raise ModelLoadError(
-                f"Failed to load speech-to-text model {self.model_name}: {str(e)}",
-                error_code="MODEL_LOAD_FAILED",
-                details={"model_name": self.model_name, "device": self.device},
-            ) from e
 
     def transcribe(
         self,
@@ -232,7 +206,8 @@ class BaseSpeechToTextEngine(ABC):
         start_time = time.time()
         try:
             text, detected_lang = self._transcribe_impl(
-                audio_data, sample_rate, language)
+                audio_data, sample_rate, language
+            )
             processing_time_ms = (time.time() - start_time) * 1000
             log_performance(
                 "transcription",
@@ -284,7 +259,9 @@ class TranslationPipeline:
                 original_text, detected_language = self.stt_engine.transcribe(
                     request.audio_data,
                     request.sample_rate,
-                    request.source_language if request.source_language != LanguageCode.AUTO else None,
+                    request.source_language
+                    if request.source_language != LanguageCode.AUTO
+                    else None,
                 )
             else:
                 raise TranslationError("No text or audio data provided")
@@ -332,6 +309,7 @@ class TranslationPipeline:
 
             # Fallback to simple language detection
             from langdetect import detect
+
             return detect(text)
         except Exception:
             # Default fallback

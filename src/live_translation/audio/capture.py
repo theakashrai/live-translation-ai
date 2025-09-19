@@ -3,7 +3,7 @@
 import queue
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import sounddevice as sd
@@ -44,8 +44,7 @@ class AudioCapture:
 
         # State management
         self.is_recording = False
-        self.audio_queue: queue.Queue[AudioChunk] = queue.Queue(
-            maxsize=max_queue_size)
+        self.audio_queue: queue.Queue[AudioChunk] = queue.Queue(maxsize=max_queue_size)
         self.stream: Optional[sd.InputStream] = None
         self.callback_fn: Optional[Callable[[AudioChunk], None]] = None
         self.sequence_id = 0
@@ -100,8 +99,7 @@ class AudioCapture:
             ) from e
 
     def start_recording(
-        self,
-        callback: Optional[Callable[[AudioChunk], None]] = None
+        self, callback: Optional[Callable[[AudioChunk], None]] = None
     ) -> None:
         """Start recording audio."""
         if self.is_recording:
@@ -113,15 +111,31 @@ class AudioCapture:
         try:
             logger.info(f"Starting audio recording at {self.sample_rate}Hz")
 
-            def audio_callback(indata: np.ndarray, frames: int, time_info: Any, status: sd.CallbackFlags) -> None:
+            def audio_callback(
+                indata: np.ndarray,
+                frames: int,
+                time_info: Any,
+                status: sd.CallbackFlags,
+            ) -> None:
                 """Callback function for audio stream."""
-                if status:
-                    logger.warning(f"Audio callback status: {status}")
-
                 try:
-                    # Convert to bytes
-                    audio_data = (
-                        indata[:, 0] * 32767).astype(np.int16).tobytes()
+                    if status:
+                        logger.warning(f"Audio callback status: {status}")
+
+                    # Skip processing if input data is invalid
+                    if indata is None or len(indata) == 0:
+                        logger.warning("Empty audio input, skipping")
+                        return
+
+                    # Validate audio data range
+                    if np.max(np.abs(indata)) == 0:
+                        logger.debug("Silent audio chunk detected")
+                    elif np.max(np.abs(indata)) > 1.5:
+                        logger.warning("Audio input may be clipping, normalizing")
+                        indata = np.clip(indata, -1.0, 1.0)
+
+                    # Convert to bytes (16-bit PCM)
+                    audio_data = (indata[:, 0] * 32767).astype(np.int16).tobytes()
 
                     # Calculate duration
                     duration_ms = (frames / self.sample_rate) * 1000
@@ -137,21 +151,29 @@ class AudioCapture:
 
                     self.sequence_id += 1
 
-                    # Add to queue
+                    # Add to queue with error handling
                     try:
                         self.audio_queue.put_nowait(chunk)
                     except queue.Full:
                         logger.warning("Audio queue full, dropping chunk")
+                        # Remove oldest chunk and add new one
+                        try:
+                            self.audio_queue.get_nowait()
+                            self.audio_queue.put_nowait(chunk)
+                        except queue.Empty:
+                            pass
 
                     # Call callback if provided
                     if self.callback_fn:
                         try:
                             self.callback_fn(chunk)
-                        except Exception as e:
-                            logger.error(f"Audio callback error: {str(e)}")
+                        except Exception as callback_error:
+                            logger.error(f"Audio callback error: {callback_error}")
+                            # Don't re-raise to prevent breaking the audio stream
 
                 except Exception as e:
-                    logger.error(f"Error in audio callback: {str(e)}")
+                    logger.error(f"Critical error in audio callback: {e}")
+                    # Don't re-raise to prevent breaking the audio stream
 
             # Create and start stream
             self.stream = sd.InputStream(
@@ -215,7 +237,7 @@ class AudioCapture:
             audio_float = audio_array.astype(np.float32) / 32768.0
 
             # Calculate RMS energy
-            rms_energy = np.sqrt(np.mean(audio_float ** 2))
+            rms_energy = np.sqrt(np.mean(audio_float**2))
 
             has_voice = rms_energy > self.vad_threshold
 
@@ -244,13 +266,15 @@ class AudioCapture:
             input_devices = []
 
             for i, device in enumerate(devices):
-                if device['max_input_channels'] > 0:
-                    input_devices.append({
-                        'index': i,
-                        'name': device['name'],
-                        'channels': device['max_input_channels'],
-                        'sample_rate': device['default_samplerate'],
-                    })
+                if device["max_input_channels"] > 0:
+                    input_devices.append(
+                        {
+                            "index": i,
+                            "name": device["name"],
+                            "channels": device["max_input_channels"],
+                            "sample_rate": device["default_samplerate"],
+                        }
+                    )
 
             return input_devices
 
@@ -258,7 +282,7 @@ class AudioCapture:
             logger.error(f"Failed to list audio devices: {str(e)}")
             return []
 
-    def __enter__(self) -> 'AudioCapture':
+    def __enter__(self) -> "AudioCapture":
         """Context manager entry."""
         return self
 
@@ -304,21 +328,25 @@ class AudioBuffer:
         # For simplicity, return the last N seconds of audio
         # In practice, you'd use proper VAD to find speech boundaries
         segment_duration_s = min(
-            self.max_duration_s, self.samples_written / self.sample_rate)
+            self.max_duration_s, self.samples_written / self.sample_rate
+        )
         segment_samples = int(segment_duration_s * self.sample_rate)
 
         if self.samples_written < self.max_samples:
             # Buffer not full yet
-            return self.buffer[:self.samples_written].copy()
+            return self.buffer[: self.samples_written].copy()
         else:
             # Buffer is full, extract from circular buffer
             if self.write_pos >= segment_samples:
-                return self.buffer[self.write_pos - segment_samples:self.write_pos].copy()
+                return self.buffer[
+                    self.write_pos - segment_samples : self.write_pos
+                ].copy()
             else:
                 # Wrap around
-                part1 = self.buffer[self.max_samples -
-                                    (segment_samples - self.write_pos):]
-                part2 = self.buffer[:self.write_pos]
+                part1 = self.buffer[
+                    self.max_samples - (segment_samples - self.write_pos) :
+                ]
+                part2 = self.buffer[: self.write_pos]
                 return np.concatenate([part1, part2])
 
     def clear(self) -> None:

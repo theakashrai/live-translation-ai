@@ -1,0 +1,17 @@
+{
+  "threshold": 10,
+  "reporters": ["console"],
+  "ignore": [
+    "**/__pycache__/**",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/htmlcov/**",
+    "**/coverage.xml",
+    "**/*.pyc"
+  ],
+  "languages": ["python"],
+  "minLines": 8,
+  "minTokens": 40,
+  "format": ["python"],
+  "gitignore": true
+}

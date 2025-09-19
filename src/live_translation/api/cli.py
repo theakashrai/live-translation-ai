@@ -1,27 +1,35 @@
 """Command Line Interface for Live Translation AI."""
 
+from __future__ import annotations
+
 import asyncio
 import sys
-import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import (BarColumn, Progress, SpinnerColumn,
-                           TextColumn, TimeElapsedColumn)
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 from live_translation.audio.capture import AudioCapture
-from live_translation.audio.processor import (BatchAudioProcessor,
-                                              StreamingTranslator)
+from live_translation.audio.processor import BatchAudioProcessor, StreamingTranslator
 from live_translation.core.config import settings
-from live_translation.core.exceptions import LiveTranslationError
-from live_translation.core.models import LanguageCode, TranslationRequest
+from live_translation.core.models import (
+    LanguageCode,
+    TranslationRequest,
+    TranslationResponse,
+)
 from live_translation.translation.engine import TranslationPipeline
 from live_translation.translation.text_translator import TransformersTranslator
-from live_translation.translation.whisper_adapter import WhisperAdapter
+from live_translation.translation.whisper_engine import WhisperAdapter
 from live_translation.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -48,15 +56,15 @@ class CLIContext:
                         device=settings.device,
                     )
                     stt_engine.load()
-                    console.print(
-                        "✅ Whisper model loaded successfully", style="green")
+                    console.print("✅ Whisper model loaded successfully", style="green")
                 except Exception as e:
+                    console.print(f"❌ Failed to load Whisper model: {e}", style="red")
                     console.print(
-                        f"❌ Failed to load Whisper model: {e}", style="red")
-                    console.print(
-                        "💡 Please install: pip install openai-whisper", style="yellow")
+                        "💡 Please install: pip install openai-whisper", style="yellow"
+                    )
                     raise RuntimeError(
-                        "Speech-to-text model required but not available") from e
+                        "Speech-to-text model required but not available"
+                    ) from e
 
                 # Initialize translation engine
                 try:
@@ -66,14 +74,18 @@ class CLIContext:
                     )
                     translation_engine.load()
                     console.print(
-                        "✅ Translation model loaded successfully", style="green")
+                        "✅ Translation model loaded successfully", style="green"
+                    )
                 except Exception as e:
                     console.print(
-                        f"❌ Failed to load translation model: {e}", style="red")
+                        f"❌ Failed to load translation model: {e}", style="red"
+                    )
                     console.print(
-                        "💡 Please install: pip install transformers", style="yellow")
+                        "💡 Please install: pip install transformers", style="yellow"
+                    )
                     raise RuntimeError(
-                        "Translation model required but not available") from e
+                        "Translation model required but not available"
+                    ) from e
 
                 self.translation_pipeline = TranslationPipeline(
                     stt_engine=stt_engine,
@@ -96,7 +108,11 @@ cli_context = CLIContext()
     help="Path to configuration file",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
-@click.option("--device", type=click.Choice(["cpu", "cuda", "mps"]), help="Device to use for models")
+@click.option(
+    "--device",
+    type=click.Choice(["cpu", "cuda", "mps"]),
+    help="Device to use for models",
+)
 @click.version_option(version="0.1.0")
 def cli(config: Optional[Path], verbose: bool, device: Optional[str]) -> None:
     """Live Translation AI - Privacy-first local translation tool."""
@@ -111,32 +127,59 @@ def cli(config: Optional[Path], verbose: bool, device: Optional[str]) -> None:
         console.print(f"📝 Using config file: {config}")
 
 
+cli_context = CLIContext()
+
+
+def language_options(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Common language options decorator."""
+    func = click.option(
+        "--target",
+        "-t",
+        type=click.Choice([lang.value for lang in LanguageCode]),
+        default="en",
+        help="Target language",
+    )(func)
+    func = click.option(
+        "--source",
+        "-s",
+        type=click.Choice([lang.value for lang in LanguageCode]),
+        default="auto",
+        help="Source language (auto-detect by default)",
+    )(func)
+    return func
+
+
+def display_translation_result(response: TranslationResponse) -> None:
+    """Display translation result in a formatted panel."""
+    console.print(
+        Panel(
+            f"🗣️  Original ({response.detected_language}): {response.original_text}\n"
+            f"🌍 Translated: {response.translated_text}\n"
+            f"⚡ Time: {response.processing_time_ms:.1f}ms",
+            border_style="green",
+        )
+    )
+
+
 @cli.command()
-@click.option(
-    "--source", "-s",
-    type=click.Choice([lang.value for lang in LanguageCode]),
-    default="auto",
-    help="Source language (auto-detect by default)",
-)
-@click.option(
-    "--target", "-t",
-    type=click.Choice([lang.value for lang in LanguageCode]),
-    default="en",
-    help="Target language",
-)
+@language_options
 @click.option("--device", type=int, help="Audio device index")
-@click.option("--duration", "-d", type=int, default=30, help="Recording duration in seconds")
+@click.option(
+    "--duration", "-d", type=int, default=30, help="Recording duration in seconds"
+)
 def audio(source: str, target: str, device: Optional[int], duration: int) -> None:
     """Translate live audio input."""
     pipeline = cli_context.get_translation_pipeline()
 
-    console.print(Panel(
-        f"🎤 Live Audio Translation\n"
-        f"Source: {source} → Target: {target}\n"
-        f"Duration: {duration}s",
-        title="Audio Translation",
-        border_style="blue"
-    ))
+    console.print(
+        Panel(
+            f"🎤 Live Audio Translation\n"
+            f"Source: {source} → Target: {target}\n"
+            f"Duration: {duration}s",
+            title="Audio Translation",
+            border_style="blue",
+        )
+    )
 
     # List available devices
     if device is None:
@@ -148,11 +191,7 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
             table.add_column("Channels", style="green")
 
             for dev in devices:
-                table.add_row(
-                    str(dev['index']),
-                    dev['name'],
-                    str(dev['channels'])
-                )
+                table.add_row(str(dev["index"]), dev["name"], str(dev["channels"]))
             console.print(table)
 
             device = click.prompt("Select device index", type=int, default=0)
@@ -164,13 +203,15 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
             target_language=target,
         )
 
-        def on_translation(response) -> None:
-            console.print(Panel(
-                f"🗣️  Original: {response.original_text}\n"
-                f"🌍 Translated: {response.translated_text}\n"
-                f"⚡ Time: {response.processing_time_ms:.1f}ms",
-                border_style="green"
-            ))
+        def on_translation(response: TranslationResponse) -> None:
+            console.print(
+                Panel(
+                    f"🗣️  Original: {response.original_text}\n"
+                    f"🌍 Translated: {response.translated_text}\n"
+                    f"⚡ Time: {response.processing_time_ms:.1f}ms",
+                    border_style="green",
+                )
+            )
 
         try:
             console.print("🎙️  Recording... Press Ctrl+C to stop")
@@ -198,18 +239,7 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
 
 
 @cli.command()
-@click.option(
-    "--source", "-s",
-    type=click.Choice([lang.value for lang in LanguageCode]),
-    default="auto",
-    help="Source language",
-)
-@click.option(
-    "--target", "-t",
-    type=click.Choice([lang.value for lang in LanguageCode]),
-    default="en",
-    help="Target language",
-)
+@language_options
 @click.option("--interactive", "-i", is_flag=True, help="Interactive mode")
 @click.argument("text", required=False)
 def text(source: str, target: str, interactive: bool, text: Optional[str]) -> None:
@@ -217,13 +247,15 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
     pipeline = cli_context.get_translation_pipeline()
 
     if interactive:
-        console.print(Panel(
-            f"📝 Interactive Text Translation\n"
-            f"Source: {source} → Target: {target}\n"
-            f"Type 'quit' to exit",
-            title="Text Translation",
-            border_style="blue"
-        ))
+        console.print(
+            Panel(
+                f"📝 Interactive Text Translation\n"
+                f"Source: {source} → Target: {target}\n"
+                f"Type 'quit' to exit",
+                title="Text Translation",
+                border_style="blue",
+            )
+        )
 
         while True:
             try:
@@ -241,12 +273,7 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
                 with console.status("[bold blue]Translating..."):
                     response = pipeline.process_request(request)
 
-                console.print(Panel(
-                    f"🗣️  Original ({response.detected_language}): {response.original_text}\n"
-                    f"🌍 Translated: {response.translated_text}\n"
-                    f"⚡ Time: {response.processing_time_ms:.1f}ms",
-                    border_style="green"
-                ))
+                display_translation_result(response)
 
             except KeyboardInterrupt:
                 break
@@ -265,12 +292,7 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
             with console.status("[bold blue]Translating..."):
                 response = pipeline.process_request(request)
 
-            console.print(Panel(
-                f"🗣️  Original ({response.detected_language}): {response.original_text}\n"
-                f"🌍 Translated: {response.translated_text}\n"
-                f"⚡ Time: {response.processing_time_ms:.1f}ms",
-                border_style="green"
-            ))
+            display_translation_result(response)
 
         except Exception as e:
             console.print(f"❌ Error: {e}", style="red")
@@ -301,19 +323,25 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
 @cli.command()
 @click.argument("files", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option(
-    "--source", "-s",
+    "--source",
+    "-s",
     type=click.Choice([lang.value for lang in LanguageCode]),
     default="auto",
     help="Source language",
 )
 @click.option(
-    "--target", "-t",
+    "--target",
+    "-t",
     type=click.Choice([lang.value for lang in LanguageCode]),
     default="en",
     help="Target language",
 )
-@click.option("--output", "-o", type=click.Path(path_type=Path), help="Output directory")
-def file(files: tuple[Path, ...], source: str, target: str, output: Optional[Path]) -> None:
+@click.option(
+    "--output", "-o", type=click.Path(path_type=Path), help="Output directory"
+)
+def file(
+    files: tuple[Path, ...], source: str, target: str, output: Optional[Path]
+) -> None:
     """Translate audio files."""
     if not files:
         console.print("❌ No files provided", style="red")
@@ -339,9 +367,9 @@ def file(files: tuple[Path, ...], source: str, target: str, output: Optional[Pat
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-
             task = progress.add_task(
-                f"Processing {len(files)} files...", total=len(files))
+                f"Processing {len(files)} files...", total=len(files)
+            )
             completed = 0
 
             async for file_path, response in batch_processor.process_files(
@@ -353,22 +381,25 @@ def file(files: tuple[Path, ...], source: str, target: str, output: Optional[Pat
 
                 with open(output_file, "w", encoding="utf-8") as f:
                     f.write(
-                        f"Original ({response.detected_language}): {response.original_text}\n")
+                        f"Original ({response.detected_language}): {response.original_text}\n"
+                    )
                     f.write(f"Translated: {response.translated_text}\n")
-                    f.write(
-                        f"Processing time: {response.processing_time_ms:.1f}ms\n")
+                    f.write(f"Processing time: {response.processing_time_ms:.1f}ms\n")
 
                 completed += 1
                 progress.update(
-                    task, advance=1, description=f"Completed {completed}/{len(files)} files")
+                    task,
+                    advance=1,
+                    description=f"Completed {completed}/{len(files)} files",
+                )
 
-                console.print(
-                    f"✅ Translated: {input_path.name} → {output_file.name}")
+                console.print(f"✅ Translated: {input_path.name} → {output_file.name}")
 
     try:
         asyncio.run(process_files())
         console.print(
-            f"🎉 All files processed! Results saved in: {output}", style="green")
+            f"🎉 All files processed! Results saved in: {output}", style="green"
+        )
     except Exception as e:
         console.print(f"❌ Error: {e}", style="red")
         sys.exit(1)
@@ -391,10 +422,10 @@ def devices() -> None:
 
     for device in devices:
         table.add_row(
-            str(device['index']),
-            device['name'],
-            str(device['channels']),
-            f"{device['sample_rate']:.0f} Hz"
+            str(device["index"]),
+            device["name"],
+            str(device["channels"]),
+            f"{device['sample_rate']:.0f} Hz",
         )
 
     console.print(table)
@@ -409,28 +440,27 @@ def config() -> None:
     table.add_column("Description", style="dim")
 
     # Model settings
-    table.add_row("Whisper Model", settings.whisper_model,
-                  "Speech-to-text model")
-    table.add_row("Translation Model", settings.translation_model,
-                  "Text translation model")
+    table.add_row("Whisper Model", settings.whisper_model, "Speech-to-text model")
+    table.add_row(
+        "Translation Model", settings.translation_model, "Text translation model"
+    )
     table.add_row("Device", settings.device, "Processing device")
 
     # Audio settings
-    table.add_row(
-        "Sample Rate", f"{settings.sample_rate} Hz", "Audio sample rate")
-    table.add_row("Chunk Length",
-                  f"{settings.chunk_length}s", "Audio chunk duration")
+    table.add_row("Sample Rate", f"{settings.sample_rate} Hz", "Audio sample rate")
+    table.add_row("Chunk Length", f"{settings.chunk_length}s", "Audio chunk duration")
 
     # Language settings
-    table.add_row("Default Source", settings.default_source_lang,
-                  "Default source language")
-    table.add_row("Default Target", settings.default_target_lang,
-                  "Default target language")
+    table.add_row(
+        "Default Source", settings.default_source_lang, "Default source language"
+    )
+    table.add_row(
+        "Default Target", settings.default_target_lang, "Default target language"
+    )
 
     # Cache settings
     table.add_row("Cache Dir", str(settings.cache_dir), "Cache directory")
-    table.add_row("Model Cache", str(settings.model_cache_dir),
-                  "Model cache directory")
+    table.add_row("Model Cache", str(settings.model_cache_dir), "Model cache directory")
 
     console.print(table)
 
@@ -438,11 +468,9 @@ def config() -> None:
 @cli.command()
 def status() -> None:
     """Show system status and model information."""
-    console.print(Panel(
-        "🔍 Checking system status...",
-        title="System Status",
-        border_style="blue"
-    ))
+    console.print(
+        Panel("🔍 Checking system status...", title="System Status", border_style="blue")
+    )
 
     # Check model availability
     status_table = Table(title="Model Status")
@@ -452,7 +480,8 @@ def status() -> None:
 
     # Check Whisper
     try:
-        import whisper
+        pass
+
         whisper_status = "✅ Available"
         whisper_details = f"Model: {settings.whisper_model}"
     except ImportError:
@@ -464,19 +493,19 @@ def status() -> None:
     # Check Transformers
     try:
         import torch
-        import transformers
+
         transformers_status = "✅ Available"
         transformers_details = f"PyTorch: {torch.__version__}"
     except ImportError:
         transformers_status = "❌ Not installed"
         transformers_details = "pip install transformers torch"
 
-    status_table.add_row(
-        "Transformers", transformers_status, transformers_details)
+    status_table.add_row("Transformers", transformers_status, transformers_details)
 
     # Check Audio
     try:
-        import sounddevice
+        pass
+
         audio_status = "✅ Available"
         audio_details = f"Devices: {len(AudioCapture.list_audio_devices())}"
     except ImportError:

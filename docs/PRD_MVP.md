@@ -45,7 +45,7 @@ live-translation-ai/
 │       ├── translation/
 │       │   ├── __init__.py
 │       │   ├── engine.py   # Translation engine interface
-│       │   ├── whisper_adapter.py
+│       │   ├── whisper_document_loader.py
 │       │   └── text_translator.py
 │       ├── api/
 │       │   ├── __init__.py
@@ -81,7 +81,7 @@ class TranslationRequest(BaseModel):
     target_language: LanguageCode
     audio_data: bytes
     sample_rate: int = Field(default=16000, ge=8000, le=48000)
-    
+
 class TranslationResponse(BaseModel):
     original_text: str
     translated_text: str
@@ -112,20 +112,20 @@ class Settings(BaseSettings):
         env_prefix="TRANSLATION_",
         case_sensitive=False
     )
-    
+
     # Model settings
     whisper_model: str = Field(default="base", pattern="^(tiny|base|small|medium|large)$")
     translation_model: str = Field(default="nllb-200-distilled-600M")
     device: str = Field(default="cpu", pattern="^(cpu|cuda|mps)$")
-    
+
     # Audio settings
     sample_rate: int = Field(default=16000, ge=8000, le=48000)
     chunk_length: int = Field(default=30, ge=5, le=60)
-    
+
     # Performance settings
     batch_size: int = Field(default=1, ge=1, le=32)
     num_threads: int = Field(default=4, ge=1, le=16)
-    
+
     # Language defaults
     default_source_lang: str = "auto"
     default_target_lang: str = "en"

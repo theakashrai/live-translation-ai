@@ -5,6 +5,8 @@ This module provides the configuration and setup for structured logging
 using structlog for the application.
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 from typing import Any, Optional
@@ -109,7 +111,7 @@ def get_logger(
     return logger
 
 
-def temporary_context(**values: Any):
+def temporary_context(**values: Any) -> Any:
     """
     Context manager for temporarily binding values to the logger context.
 

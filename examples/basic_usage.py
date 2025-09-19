@@ -7,7 +7,6 @@ This script shows how to use the Live Translation AI library programmatically.
 
 import asyncio
 import time
-from pathlib import Path
 
 from live_translation.core.models import LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
@@ -28,7 +27,7 @@ async def main() -> None:
     translator.load()
 
     pipeline = TranslationPipeline(
-        stt_engine=translator,  # type: ignore
+        stt_engine=translator,
         translation_engine=translator,
     )
 
@@ -57,8 +56,7 @@ async def main() -> None:
         response = pipeline.process_request(request)
         duration = (time.time() - start_time) * 1000
 
-        print(
-            f"🗣️  Original ({response.detected_language}): {response.original_text}")
+        print(f"🗣️  Original ({response.detected_language}): {response.original_text}")
         print(f"🌍 Translated: {response.translated_text}")
         print(f"⚡ Processing time: {duration:.1f}ms")
         print()
@@ -90,7 +88,8 @@ async def main() -> None:
 
     print(f"🎵 Audio processed: {len(audio_bytes)} bytes at {sample_rate}Hz")
     print(
-        f"🗣️  Transcribed ({audio_response.detected_language}): {audio_response.original_text}")
+        f"🗣️  Transcribed ({audio_response.detected_language}): {audio_response.original_text}"
+    )
     print(f"🌍 Translated: {audio_response.translated_text}")
     print(f"⚡ Processing time: {duration:.1f}ms")
     print(f"🎯 Confidence: {audio_response.confidence:.3f}")
@@ -122,8 +121,7 @@ async def main() -> None:
         print(f"{i}/5: {text} → {response.translated_text}")
 
     batch_duration = (time.time() - batch_start) * 1000
-    print(
-        f"📊 Batch completed in {batch_duration:.1f}ms ({len(batch_texts)} items)")
+    print(f"📊 Batch completed in {batch_duration:.1f}ms ({len(batch_texts)} items)")
     print(f"📈 Average per item: {batch_duration/len(batch_texts):.1f}ms")
     print()
 
@@ -155,7 +153,7 @@ async def main() -> None:
 if __name__ == "__main__":
     # Handle numpy import for example
     try:
-        import numpy as np
+        pass
     except ImportError:
         print("❌ NumPy not available - skipping audio example")
         print("Install with: pip install numpy")

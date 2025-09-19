@@ -59,7 +59,7 @@ def simple_translator() -> SimpleTranslator:
 def translation_pipeline(simple_translator: SimpleTranslator) -> TranslationPipeline:
     """Create a translation pipeline with mock engines."""
     return TranslationPipeline(
-        stt_engine=simple_translator,  # type: ignore
+        stt_engine=simple_translator,
         translation_engine=simple_translator,
     )
 
@@ -112,9 +112,5 @@ def pytest_configure(config: Any) -> None:
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")

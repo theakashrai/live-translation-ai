@@ -262,8 +262,9 @@ site/
 # Memory dumps
 *.dump
 
-# Core dumps
-core
+# Core dumps (system crash dumps)
+core.*
+*.core
 
 # Application-specific
 # Translation model downloads
@@ -297,3 +298,4 @@ prototypes/
 # Local configuration overrides
 config.local.yaml
 settings.local.json
+jscpd-report/*

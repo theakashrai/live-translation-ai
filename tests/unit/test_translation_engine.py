@@ -4,7 +4,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from live_translation.core.exceptions import TranslationError
 from live_translation.core.models import LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
 from live_translation.translation.text_translator import SimpleTranslator
@@ -78,7 +77,7 @@ class TestTranslationPipeline:
         )
 
         # Mock language detection
-        with patch.object(pipeline, '_detect_language', return_value="en"):
+        with patch.object(pipeline, "_detect_language", return_value="en"):
             response = pipeline.process_request(request)
 
         assert response.original_text == "Hello, world!"
@@ -122,9 +121,7 @@ class TestTranslationPipeline:
         assert response.processing_time_ms > 0
 
         # Verify STT engine was called
-        stt_engine.transcribe.assert_called_once_with(
-            audio_data, 16000, None
-        )
+        stt_engine.transcribe.assert_called_once_with(audio_data, 16000, None)
 
         # Verify translation engine was called
         translation_engine.translate.assert_called_once_with(
@@ -133,14 +130,6 @@ class TestTranslationPipeline:
 
     def test_process_request_no_input_error(self) -> None:
         """Test that request without text or audio raises error."""
-        stt_engine = Mock()
-        translation_engine = Mock()
-
-        pipeline = TranslationPipeline(
-            stt_engine=stt_engine,
-            translation_engine=translation_engine,
-        )
-
         # This should raise a validation error during request creation
         with pytest.raises(ValueError) as exc_info:
             TranslationRequest(
@@ -148,8 +137,7 @@ class TestTranslationPipeline:
                 target_language=LanguageCode.SPANISH,
             )
 
-        assert "Either text or audio_data must be provided" in str(
-            exc_info.value)
+        assert "Either text or audio_data must be provided" in str(exc_info.value)
 
     def test_stt_engine_error_propagation(self) -> None:
         """Test that STT engine errors are properly propagated."""
@@ -182,8 +170,7 @@ class TestTranslationPipeline:
 
         # Mock translation engine that raises an error
         translation_engine = Mock()
-        translation_engine.translate.side_effect = Exception(
-            "Translation failed")
+        translation_engine.translate.side_effect = Exception("Translation failed")
 
         pipeline = TranslationPipeline(
             stt_engine=stt_engine,
@@ -196,7 +183,7 @@ class TestTranslationPipeline:
             target_language=LanguageCode.SPANISH,
         )
 
-        with patch.object(pipeline, '_detect_language', return_value="en"):
+        with patch.object(pipeline, "_detect_language", return_value="en"):
             with pytest.raises(Exception) as exc_info:
                 pipeline.process_request(request)
 

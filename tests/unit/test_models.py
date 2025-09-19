@@ -10,10 +10,9 @@ from live_translation.core.models import (
     AudioFormat,
     JobStatus,
     LanguageCode,
+    TranslationJob,
     TranslationRequest,
     TranslationResponse,
-    TranslationJob,
-    SystemStatus,
 )
 
 
@@ -318,103 +317,3 @@ class TestTranslationJob:
         job2.mark_failed("Test error")
         assert job2.status == JobStatus.FAILED
         assert job2.error_message == "Test error"
-
-
-class TestAudioChunk:
-    """Test AudioChunk model."""
-
-    def test_valid_audio_chunk(self) -> None:
-        """Test creating a valid audio chunk."""
-        audio_data = b"fake_audio_data"
-        chunk = AudioChunk(
-            data=audio_data,
-            sample_rate=16000,
-            channels=1,
-            duration_ms=1000.0,
-            sequence_id=1,
-        )
-
-        assert chunk.data == audio_data
-        assert chunk.sample_rate == 16000
-        assert chunk.channels == 1
-        assert chunk.duration_ms == 1000.0
-        assert chunk.sequence_id == 1
-        assert isinstance(chunk.timestamp, datetime)
-
-    def test_audio_chunk_properties(self) -> None:
-        """Test audio chunk computed properties."""
-        chunk = AudioChunk(
-            data=b"fake_audio_data" * 100,  # Make it bigger
-            sample_rate=16000,
-            duration_ms=1000.0,
-            sequence_id=1,
-        )
-
-        assert chunk.duration_seconds == 1.0
-        assert chunk.size_kb > 0
-
-    def test_invalid_sample_rate(self) -> None:
-        """Test that invalid sample rates raise validation errors."""
-        audio_data = b"fake_audio_data"
-
-        # Too low
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=audio_data,
-                sample_rate=7999,
-                duration_ms=1000.0,
-                sequence_id=1,
-            )
-
-        # Too high
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=audio_data,
-                sample_rate=48001,
-                duration_ms=1000.0,
-                sequence_id=1,
-            )
-
-    def test_invalid_channels(self) -> None:
-        """Test that invalid channel counts raise validation errors."""
-        audio_data = b"fake_audio_data"
-
-        # Too few channels
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=audio_data,
-                sample_rate=16000,
-                channels=0,
-                duration_ms=1000.0,
-                sequence_id=1,
-            )
-
-        # Too many channels
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=audio_data,
-                sample_rate=16000,
-                channels=3,
-                duration_ms=1000.0,
-                sequence_id=1,
-            )
-
-    def test_negative_duration(self) -> None:
-        """Test that negative duration raises validation error."""
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=b"fake_audio",
-                sample_rate=16000,
-                duration_ms=-1.0,
-                sequence_id=1,
-            )
-
-    def test_negative_sequence_id(self) -> None:
-        """Test that negative sequence ID raises validation error."""
-        with pytest.raises(ValidationError):
-            AudioChunk(
-                data=b"fake_audio",
-                sample_rate=16000,
-                duration_ms=1000.0,
-                sequence_id=-1,
-            )

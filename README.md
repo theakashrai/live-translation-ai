@@ -196,7 +196,7 @@ live-translation-ai/
 │   │   └── exceptions.py  # Custom exceptions
 │   ├── translation/       # Translation engines
 │   │   ├── engine.py      # Base classes and pipeline
-│   │   ├── whisper_adapter.py  # Whisper integration
+│   │   ├── whisper_document_loader.py  # Whisper LangChain integration
 │   │   └── text_translator.py # Text translation
 │   ├── audio/             # Audio processing
 │   │   ├── capture.py     # Audio capture
@@ -214,7 +214,7 @@ live-translation-ai/
 ### Data Flow
 
 1. **Input**: Audio/text input via CLI
-2. **Processing**: 
+2. **Processing**:
    - Audio → Whisper → Text transcription
    - Text → Language detection (if auto)
    - Text → Translation model → Translated text

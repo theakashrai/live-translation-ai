@@ -2,7 +2,6 @@
 
 import asyncio
 import time
-from datetime import datetime
 from typing import Any, AsyncGenerator, Callable, Optional
 
 import numpy as np
@@ -10,8 +9,11 @@ import numpy as np
 from live_translation.audio.capture import AudioBuffer, AudioCapture
 from live_translation.core.config import settings
 from live_translation.core.exceptions import AudioProcessingError, handle_audio_error
-from live_translation.core.models import (AudioChunk, TranslationRequest,
-                                          TranslationResponse)
+from live_translation.core.models import (
+    AudioChunk,
+    TranslationRequest,
+    TranslationResponse,
+)
 from live_translation.translation.engine import TranslationPipeline
 from live_translation.utils.logger import get_logger, log_audio_metrics
 
@@ -89,13 +91,14 @@ class AudioProcessor:
             try:
                 audio_array = np.frombuffer(chunk.data, dtype=np.int16)
                 audio_float = audio_array.astype(np.float32) / 32768.0
-                rms_energy = np.sqrt(
-                    np.mean(audio_float ** 2)) if len(audio_array) > 0 else 0
+                rms_energy = (
+                    np.sqrt(np.mean(audio_float**2)) if len(audio_array) > 0 else 0
+                )
 
                 # If it's just silence, don't count as failed translation
                 if rms_energy < 0.01:  # Very low threshold for silence detection
                     return None
-            except:
+            except Exception:
                 pass  # If we can't check, proceed with error handling
 
             self.failed_translations += 1
@@ -147,7 +150,7 @@ class AudioProcessor:
 
             # Calculate RMS energy
             audio_float = audio_array.astype(np.float32) / 32768.0
-            rms_energy = np.sqrt(np.mean(audio_float ** 2))
+            rms_energy = np.sqrt(np.mean(audio_float**2))
 
             return rms_energy > self.vad_threshold
 
@@ -191,8 +194,7 @@ class AudioProcessor:
                 processing_time = (time.time() - start_time) * 1000
                 log_audio_metrics(
                     sample_rate=settings.sample_rate,
-                    duration_ms=len(speech_audio) /
-                    settings.sample_rate * 1000,
+                    duration_ms=len(speech_audio) / settings.sample_rate * 1000,
                     processing_time_ms=processing_time,
                 )
 
@@ -204,6 +206,11 @@ class AudioProcessor:
         except Exception as e:
             self.failed_translations += 1
             logger.error(f"Translation failed: {e}")
+
+            # Clear buffer on error to prevent accumulating bad data
+            if self.failed_translations % 5 == 0:  # Clear every 5 failures
+                logger.warning("Clearing audio buffer due to repeated failures")
+                self.audio_buffer.clear()
 
         return None
 
@@ -226,8 +233,8 @@ class AudioProcessor:
             "successful_translations": self.successful_translations,
             "failed_translations": self.failed_translations,
             "success_rate": (
-                self.successful_translations /
-                max(1, self.successful_translations + self.failed_translations)
+                self.successful_translations
+                / max(1, self.successful_translations + self.failed_translations)
             ),
             "buffer_duration_s": self.audio_buffer.get_duration_seconds(),
         }
@@ -252,8 +259,9 @@ class StreamingTranslator:
 
         self.audio_capture: Optional[AudioCapture] = None
         self.audio_processor: Optional[AudioProcessor] = None
-        self.translation_callback: Optional[Callable[[
-            TranslationResponse], None]] = None
+        self.translation_callback: Optional[
+            Callable[[TranslationResponse], None]
+        ] = None
 
         self.is_streaming = False
         self._stop_event = asyncio.Event()
@@ -332,8 +340,7 @@ class StreamingTranslator:
                     break
 
                 # Get next audio chunk
-                chunk = self.audio_capture.get_audio_chunk(
-                    timeout=chunk_timeout)
+                chunk = self.audio_capture.get_audio_chunk(timeout=chunk_timeout)
 
                 if chunk is None:
                     # Yield control to other async tasks
@@ -380,12 +387,15 @@ class StreamingTranslator:
 
             # Calculate RMS energy
             audio_float = audio_array.astype(np.float32) / 32768.0
-            rms_energy = np.sqrt(np.mean(audio_float ** 2))
+            rms_energy = np.sqrt(np.mean(audio_float**2))
 
             # Consider it silence if energy is below a threshold
             # Use a lower threshold than VAD to catch more subtle speech
-            silence_threshold = self.audio_processor.vad_threshold * \
-                0.3 if self.audio_processor else 0.01
+            silence_threshold = (
+                self.audio_processor.vad_threshold * 0.3
+                if self.audio_processor
+                else 0.01
+            )
             return rms_energy < silence_threshold
 
         except Exception:
@@ -440,10 +450,11 @@ class BatchAudioProcessor:
     ) -> AsyncGenerator[tuple[str, TranslationResponse], None]:
         """Process multiple audio files concurrently."""
 
-        async def process_single_file(file_path: str) -> tuple[str, TranslationResponse]:
+        async def process_single_file(
+            file_path: str,
+        ) -> tuple[str, TranslationResponse]:
             """Process a single file."""
-            streaming_translator = StreamingTranslator(
-                self.translation_pipeline)
+            streaming_translator = StreamingTranslator(self.translation_pipeline)
 
             responses = []
             async for response in streaming_translator.process_audio_file(
@@ -453,12 +464,16 @@ class BatchAudioProcessor:
 
             # For now, return the last response
             # In practice, you might want to concatenate all responses
-            final_response = responses[-1] if responses else TranslationResponse(
-                original_text="",
-                translated_text="",
-                detected_language=source_lang,
-                confidence=0.0,
-                processing_time_ms=0.0,
+            final_response = (
+                responses[-1]
+                if responses
+                else TranslationResponse(
+                    original_text="",
+                    translated_text="",
+                    detected_language=source_lang,
+                    confidence=0.0,
+                    processing_time_ms=0.0,
+                )
             )
 
             return file_path, final_response

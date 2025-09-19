@@ -53,8 +53,7 @@ class LiveTranslationError(Exception):
         """String representation of the exception."""
         base = f"{self.error_code}: {self.message}"
         if self.details:
-            details_str = ", ".join(
-                f"{k}={v}" for k, v in self.details.items())
+            details_str = ", ".join(f"{k}={v}" for k, v in self.details.items())
             base += f" ({details_str})"
         return base
 
@@ -161,8 +160,9 @@ class LanguageDetectionError(LiveTranslationError):
         details = kwargs.pop("details", {})
         if text_sample:
             # Only store a sample for debugging
-            details["text_sample"] = text_sample[:100] + \
-                "..." if len(text_sample) > 100 else text_sample
+            details["text_sample"] = (
+                text_sample[:100] + "..." if len(text_sample) > 100 else text_sample
+            )
         super().__init__(message, details=details, **kwargs)
 
 
