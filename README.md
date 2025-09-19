@@ -63,6 +63,27 @@ translate text "Hello, world!" --target es
 translate audio --source en --target es --duration 30
 ```
 
+### Quick English to Hindi Translation Examples
+
+```bash
+# Simple text translation (English to Hindi)
+translate text "Hello, how are you?" --source en --target hi
+
+# Common phrases
+translate text "Good morning!" --source en --target hi
+translate text "Thank you very much" --source en --target hi
+translate text "Nice to meet you" --source en --target hi
+
+# Interactive mode for multiple translations
+translate text --interactive --source en --target hi
+
+# Live audio translation (30 seconds)
+translate audio --source en --target hi --duration 30
+
+# Translate from stdin (useful for piping)
+echo "Welcome to our application" | translate text --target hi
+```
+
 ## 📖 Usage
 
 ### Command Line Interface
