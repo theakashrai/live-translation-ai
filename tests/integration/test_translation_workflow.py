@@ -1,8 +1,8 @@
 """Integration tests for the complete translation workflow."""
 
 
-import pytest
 from pydantic_core import ValidationError
+import pytest
 
 from live_translation.audio.processor import AudioProcessor
 from live_translation.core.models import AudioChunk, LanguageCode, TranslationRequest

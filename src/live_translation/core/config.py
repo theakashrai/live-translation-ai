@@ -1,12 +1,12 @@
 """Configuration management using pydantic-settings."""
 
-import shutil
 from pathlib import Path
+import shutil
 from typing import Any, Literal
 
-import torch
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import torch
 
 
 class Settings(BaseSettings):

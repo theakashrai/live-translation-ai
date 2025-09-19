@@ -137,6 +137,8 @@ ignore = [
     "PLR2004", # magic value used in comparison
     "PLR0912", # too many branches (code complexity)
     "PLR0915", # too many statements (code complexity)
+    "UP038",   # isinstance with union types (minor style issue)
+    "I001",    # Import block is un-sorted or un-formatted (handled by isort)
 ]
 
 [tool.ruff.lint.per-file-ignores]

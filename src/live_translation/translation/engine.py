@@ -1,7 +1,7 @@
 """Translation engine interface and base classes."""
 
-import time
 from abc import ABC, abstractmethod
+import time
 from typing import Any, Protocol
 
 from langdetect import detect

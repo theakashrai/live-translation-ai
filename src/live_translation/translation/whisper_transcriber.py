@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import whisper
 from langchain_core.documents import Document
+import whisper
 
 from live_translation.audio.whisper_utils import WhisperAudioProcessor
 from live_translation.core.config import settings

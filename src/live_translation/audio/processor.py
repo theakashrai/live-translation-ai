@@ -1,8 +1,8 @@
 """Audio processing utilities and streaming pipeline."""
 
 import asyncio
-import time
 from collections.abc import AsyncGenerator, Callable
+import time
 from typing import Any
 
 import numpy as np

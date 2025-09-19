@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 from collections.abc import Callable
 from pathlib import Path
+import sys
 from typing import Any
 
 import click
-import torch
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -20,6 +19,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 from rich.table import Table
+import torch
 
 from live_translation.audio.capture import AudioCapture
 from live_translation.audio.processor import BatchAudioProcessor, StreamingTranslator

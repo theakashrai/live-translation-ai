@@ -3,8 +3,8 @@
 
 import argparse
 import ast
-import sys
 from pathlib import Path
+import sys
 
 
 class InlineImportVisitor(ast.NodeVisitor):

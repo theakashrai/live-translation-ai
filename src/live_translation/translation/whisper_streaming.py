@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 
-import numpy as np
 from langchain_core.documents import Document
+import numpy as np
 
 from live_translation.audio.whisper_utils import WhisperAudioProcessor
 from live_translation.core.config import settings
