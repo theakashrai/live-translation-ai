@@ -3,8 +3,6 @@
 from datetime import datetime
 
 import pytest
-from pydantic import ValidationError
-
 from live_translation.core.models import (
     AudioChunk,
     AudioFormat,
@@ -14,6 +12,7 @@ from live_translation.core.models import (
     TranslationRequest,
     TranslationResponse,
 )
+from pydantic import ValidationError
 
 
 class TestLanguageCode:
@@ -74,8 +73,7 @@ class TestTranslationRequest:
                 target_language=LanguageCode.SPANISH,
             )
 
-        assert "Either text or audio_data must be provided" in str(
-            exc_info.value)
+        assert "Either text or audio_data must be provided" in str(exc_info.value)
 
     def test_text_too_long_validation_error(self) -> None:
         """Test that text longer than 5000 characters raises validation error."""

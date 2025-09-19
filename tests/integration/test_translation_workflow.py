@@ -2,7 +2,6 @@
 
 
 import pytest
-
 from live_translation.audio.processor import AudioProcessor
 from live_translation.core.models import AudioChunk, LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline

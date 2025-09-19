@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import torch
 
@@ -29,7 +29,7 @@ class DeviceManager:
 
     @staticmethod
     def get_transcription_options(
-        device: str, language: Optional[str] = None
+        device: str, language: str | None = None
     ) -> dict[str, Any]:
         """Get device-optimized transcription options."""
         options: dict[str, Any] = {

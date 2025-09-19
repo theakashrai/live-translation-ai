@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from langdetect import detect, detect_langs
+
 from live_translation.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,8 +33,6 @@ class LanguageDetector:
             return self.default_language
 
         try:
-            from langdetect import detect
-
             return detect(text.strip())
         except ImportError:
             logger.warning(
@@ -56,8 +56,6 @@ class LanguageDetector:
             return self.default_language, 0.0
 
         try:
-            from langdetect import detect_langs
-
             results = detect_langs(text.strip())
             if results:
                 best_result = results[0]

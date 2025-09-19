@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+import numpy as np
 
 from live_translation.core.exceptions import TranslationError
 from live_translation.translation.whisper_transcriber import WhisperTranscriber
@@ -16,8 +16,8 @@ class WhisperAdapter:
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
     ) -> None:
         """Initialize the Whisper adapter.
 
@@ -32,8 +32,8 @@ class WhisperAdapter:
         self,
         audio_data: bytes,
         sample_rate: int = 16000,
-        language: Optional[str] = None,
-    ) -> Tuple[str, str]:
+        language: str | None = None,
+    ) -> tuple[str, str]:
         """Transcribe audio to text following SpeechToTextEngine protocol.
 
         Args:
@@ -78,8 +78,6 @@ class WhisperAdapter:
         """Pre-load the model (optional - model loads on first transcribe call)."""
         try:
             # Force model loading by doing a dummy transcription with empty audio
-            import numpy as np
-
             # 0.1 seconds of silence
             dummy_audio = np.zeros(1600, dtype=np.int16).tobytes()
             self.transcribe(dummy_audio, 16000)

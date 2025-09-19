@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 
 class LanguageMapper:
     """Maps between different language code formats used by various translation models."""
 
     # Standard ISO 639-1 to human-readable names
-    LANGUAGE_NAMES: Dict[str, str] = {
+    LANGUAGE_NAMES: dict[str, str] = {
         "en": "English",
         "es": "Spanish",
         "fr": "French",
@@ -25,7 +23,7 @@ class LanguageMapper:
     }
 
     # NLLB-specific language codes
-    NLLB_LANGUAGE_CODES: Dict[str, str] = {
+    NLLB_LANGUAGE_CODES: dict[str, str] = {
         "auto": "auto",  # Special case for auto-detection
         "en": "eng_Latn",
         "es": "spa_Latn",
@@ -50,7 +48,7 @@ class LanguageMapper:
         self.model_name = model_name.lower()
         self.is_nllb_model = "nllb" in self.model_name
 
-    def map_to_model_code(self, lang_code: str) -> Optional[str]:
+    def map_to_model_code(self, lang_code: str) -> str | None:
         """Map standard language code to model-specific format.
 
         Args:
@@ -67,7 +65,7 @@ class LanguageMapper:
 
         return lang_code
 
-    def get_supported_languages(self) -> Dict[str, str]:
+    def get_supported_languages(self) -> dict[str, str]:
         """Get supported language codes and their names.
 
         Returns:

@@ -61,3 +61,6 @@
 - No overly complex classes with multiple responsibilities
 - No creating files outside project structure
 - No unused complexity or over-engineering
+
+Note: Search the web for best practices if unsure about any aspect of the code or project.
+Use parallel tool calling.

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import click
+import torch
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -31,6 +33,11 @@ from live_translation.translation.engine import TranslationPipeline
 from live_translation.translation.text_translator import TransformersTranslator
 from live_translation.translation.whisper_engine import WhisperAdapter
 from live_translation.utils.logger import get_logger
+from live_translation.voice_cloning import (
+    TranslationWithVoiceCloning,
+    VoiceCloningTranslationPipeline,
+    XTTSVoiceCloner,
+)
 
 logger = get_logger(__name__)
 console = Console()
@@ -40,8 +47,9 @@ class CLIContext:
     """Shared context for CLI commands."""
 
     def __init__(self) -> None:
-        self.translation_pipeline: Optional[TranslationPipeline] = None
-        self.streaming_translator: Optional[StreamingTranslator] = None
+        self.translation_pipeline: TranslationPipeline | None = None
+        self.voice_cloning_pipeline: VoiceCloningTranslationPipeline | None = None
+        self.streaming_translator: StreamingTranslator | None = None
 
     def get_translation_pipeline(self) -> TranslationPipeline:
         """Get or create translation pipeline."""
@@ -96,6 +104,53 @@ class CLIContext:
 
         return self.translation_pipeline
 
+    def get_voice_cloning_pipeline(
+        self, reference_audio_path: str | None = None
+    ) -> VoiceCloningTranslationPipeline:
+        """Get or create voice cloning pipeline."""
+        # Always get the base translation pipeline first
+        base_pipeline = self.get_translation_pipeline()
+
+        if self.voice_cloning_pipeline is None or reference_audio_path:
+            console.print("🎭 Initializing voice cloning...", style="blue")
+
+            with console.status("[bold blue]Loading voice cloning model..."):
+                try:
+                    voice_engine = (
+                        XTTSVoiceCloner(
+                            model_name=settings.xtts_model,
+                            device=settings.device,
+                        )
+                        if settings.voice_cloning_enabled
+                        else None
+                    )
+
+                    self.voice_cloning_pipeline = VoiceCloningTranslationPipeline(
+                        translation_pipeline=base_pipeline,
+                        voice_cloning_engine=voice_engine,
+                        reference_audio_path=reference_audio_path,
+                    )
+
+                    if voice_engine:
+                        console.print(
+                            "✅ Voice cloning model loaded successfully", style="green"
+                        )
+                    else:
+                        console.print(
+                            "💡 Voice cloning disabled in settings", style="yellow"
+                        )
+
+                except Exception as e:
+                    console.print(f"❌ Failed to load voice cloning: {e}", style="red")
+                    console.print("💡 Please install: pip install TTS", style="yellow")
+                    # Fall back to regular translation pipeline
+                    self.voice_cloning_pipeline = VoiceCloningTranslationPipeline(
+                        translation_pipeline=base_pipeline,
+                        voice_cloning_engine=None,
+                    )
+
+        return self.voice_cloning_pipeline
+
 
 # Global CLI context
 cli_context = CLIContext()
@@ -114,7 +169,7 @@ cli_context = CLIContext()
     help="Device to use for models",
 )
 @click.version_option(version="0.1.0")
-def cli(config: Optional[Path], verbose: bool, device: Optional[str]) -> None:
+def cli(config: Path | None, verbose: bool, device: str | None) -> None:
     """Live Translation AI - Privacy-first local translation tool."""
     if verbose:
         settings.log_level = "DEBUG"
@@ -161,13 +216,59 @@ def display_translation_result(response: TranslationResponse) -> None:
     )
 
 
+def display_voice_cloning_result(
+    response: TranslationWithVoiceCloning, save_audio: Path | None = None
+) -> None:
+    """Display translation result with voice cloning in a formatted panel."""
+    voice_status = (
+        "🎭 Voice cloned" if response.has_voice_cloning else "❌ Voice cloning failed"
+    )
+
+    content = (
+        f"🗣️  Original ({response.detected_language}): {response.original_text}\n"
+        f"🌍 Translated: {response.translated_text}\n"
+        f"{voice_status}\n"
+        f"⚡ Total time: {response.total_processing_time_ms:.1f}ms"
+    )
+
+    if response.has_voice_cloning and response.voice_cloning_response:
+        duration = response.voice_cloning_response.duration_seconds
+        content += f"\n🎵 Audio duration: {duration:.1f}s"
+
+        # Save audio if requested
+        if save_audio and response.cloned_audio_data:
+            with open(save_audio, "wb") as f:
+                f.write(response.cloned_audio_data)
+            content += f"\n💾 Audio saved: {save_audio}"
+
+    console.print(Panel(content, border_style="green"))
+
+
+def _process_translation_request(
+    pipeline: Any,
+    request: TranslationRequest,
+    use_voice_cloning: bool,
+    save_audio: Path | None = None,
+) -> None:
+    """Process a translation request and display results."""
+    with console.status("[bold blue]Translating..."):
+        response = pipeline.process_request(request)
+        if use_voice_cloning and isinstance(response, TranslationWithVoiceCloning):
+            display_voice_cloning_result(response, save_audio)
+        elif isinstance(response, TranslationResponse):
+            display_translation_result(response)
+        else:
+            # Fallback for unexpected response types
+            console.print(f"❌ Unexpected response type: {type(response)}", style="red")
+
+
 @cli.command()
 @language_options
 @click.option("--device", type=int, help="Audio device index")
 @click.option(
     "--duration", "-d", type=int, default=30, help="Recording duration in seconds"
 )
-def audio(source: str, target: str, device: Optional[int], duration: int) -> None:
+def audio(source: str, target: str, device: int | None, duration: int) -> None:
     """Translate live audio input."""
     pipeline = cli_context.get_translation_pipeline()
 
@@ -224,7 +325,7 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
             # Wait for duration or keyboard interrupt
             await asyncio.wait_for(task, timeout=duration)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             console.print(f"⏰ Recording completed after {duration} seconds")
         except KeyboardInterrupt:
             console.print("\n🛑 Recording stopped by user")
@@ -241,16 +342,40 @@ def audio(source: str, target: str, device: Optional[int], duration: int) -> Non
 @cli.command()
 @language_options
 @click.option("--interactive", "-i", is_flag=True, help="Interactive mode")
+@click.option(
+    "--voice-clone",
+    type=click.Path(exists=True, path_type=Path),
+    help="Reference audio file for voice cloning",
+)
+@click.option(
+    "--save-audio",
+    type=click.Path(path_type=Path),
+    help="Save cloned voice audio to file",
+)
 @click.argument("text", required=False)
-def text(source: str, target: str, interactive: bool, text: Optional[str]) -> None:
-    """Translate text input."""
-    pipeline = cli_context.get_translation_pipeline()
+def text(
+    source: str,
+    target: str,
+    interactive: bool,
+    voice_clone: Path | None,
+    save_audio: Path | None,
+    text: str | None,
+) -> None:
+    """Translate text input with optional voice cloning."""
+    # Determine which pipeline to use
+    if voice_clone:
+        pipeline = cli_context.get_voice_cloning_pipeline(str(voice_clone))
+        use_voice_cloning = True
+    else:
+        pipeline = cli_context.get_translation_pipeline()
+        use_voice_cloning = False
 
     if interactive:
         console.print(
             Panel(
                 f"📝 Interactive Text Translation\n"
                 f"Source: {source} → Target: {target}\n"
+                f"Voice cloning: {'✅ Enabled' if use_voice_cloning else '❌ Disabled'}\n"
                 f"Type 'quit' to exit",
                 title="Text Translation",
                 border_style="blue",
@@ -270,10 +395,9 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
                     target_language=target,
                 )
 
-                with console.status("[bold blue]Translating..."):
-                    response = pipeline.process_request(request)
-
-                display_translation_result(response)
+                _process_translation_request(
+                    pipeline, request, use_voice_cloning, save_audio
+                )
 
             except KeyboardInterrupt:
                 break
@@ -289,10 +413,9 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
                 target_language=target,
             )
 
-            with console.status("[bold blue]Translating..."):
-                response = pipeline.process_request(request)
-
-            display_translation_result(response)
+            _process_translation_request(
+                pipeline, request, use_voice_cloning, save_audio
+            )
 
         except Exception as e:
             console.print(f"❌ Error: {e}", style="red")
@@ -310,14 +433,115 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
                 )
 
                 with console.status("[bold blue]Translating..."):
-                    response = pipeline.process_request(request)
-
-                # Simple output for piping
-                print(response.translated_text)
+                    if use_voice_cloning:
+                        response = pipeline.process_request(request)
+                        if isinstance(response, TranslationWithVoiceCloning):
+                            if (
+                                response.has_voice_cloning
+                                and save_audio
+                                and response.cloned_audio_data
+                            ):
+                                with open(save_audio, "wb") as f:
+                                    f.write(response.cloned_audio_data)
+                        # Simple output for piping
+                        print(response.translated_text)
+                    else:
+                        response = pipeline.process_request(request)
+                        print(response.translated_text)
 
         except Exception as e:
             console.print(f"❌ Error: {e}", style="red")
             sys.exit(1)
+
+
+@cli.command("voice-clone")
+@language_options
+@click.option(
+    "--reference",
+    "-r",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Reference audio file for voice cloning",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Output file for cloned voice audio",
+)
+@click.option("--speed", type=float, default=1.0, help="Speech speed (0.1-3.0)")
+@click.option(
+    "--temperature", type=float, default=0.75, help="Model temperature (0.1-1.0)"
+)
+@click.argument("text", required=True)
+def voice_clone_command(
+    source: str,
+    target: str,
+    reference: Path,
+    output: Path | None,
+    speed: float,
+    temperature: float,
+    text: str,
+) -> None:
+    """Clone voice and synthesize translated text."""
+    console.print(
+        Panel(
+            f"🎭 Voice Cloning Translation\n"
+            f"Text: {text[:50]}{'...' if len(text) > 50 else ''}\n"
+            f"Source: {source} → Target: {target}\n"
+            f"Reference: {reference.name}\n"
+            f"Speed: {speed}x, Temperature: {temperature}",
+            title="Voice Cloning",
+            border_style="magenta",
+        )
+    )
+
+    # Initialize voice cloning pipeline
+    pipeline = cli_context.get_voice_cloning_pipeline(str(reference))
+
+    if not pipeline.is_voice_cloning_available():
+        console.print("❌ Voice cloning not available", style="red")
+        console.print(
+            "💡 Enable voice cloning in settings and install TTS", style="yellow"
+        )
+        sys.exit(1)
+
+    try:
+        # Create translation request
+        request = TranslationRequest(
+            text=text,
+            source_language=source,
+            target_language=target,
+        )
+
+        with console.status("[bold magenta]Cloning voice..."):
+            # Update settings for this request
+            settings.voice_cloning_speed = speed
+            settings.voice_cloning_temperature = temperature
+
+            response = pipeline.process_request(request, enable_voice_cloning=True)
+
+        if isinstance(response, TranslationWithVoiceCloning):
+            display_voice_cloning_result(response, output)
+
+            if response.has_voice_cloning:
+                console.print("✅ Voice cloning completed successfully!", style="green")
+
+                # Show supported languages
+                supported = pipeline.get_supported_voice_languages()
+                if supported:
+                    console.print(
+                        f"💡 Supported languages: {', '.join(supported)}", style="blue"
+                    )
+            else:
+                console.print("❌ Voice cloning failed", style="red")
+        else:
+            console.print("❌ Voice cloning pipeline error", style="red")
+            sys.exit(1)
+
+    except Exception as e:
+        console.print(f"❌ Error: {e}", style="red")
+        sys.exit(1)
 
 
 @cli.command()
@@ -340,7 +564,7 @@ def text(source: str, target: str, interactive: bool, text: Optional[str]) -> No
     "--output", "-o", type=click.Path(path_type=Path), help="Output directory"
 )
 def file(
-    files: tuple[Path, ...], source: str, target: str, output: Optional[Path]
+    files: tuple[Path, ...], source: str, target: str, output: Path | None
 ) -> None:
     """Translate audio files."""
     if not files:
@@ -458,6 +682,23 @@ def config() -> None:
         "Default Target", settings.default_target_lang, "Default target language"
     )
 
+    # Voice cloning settings
+    table.add_row(
+        "Voice Cloning",
+        "✅ Enabled" if settings.voice_cloning_enabled else "❌ Disabled",
+        "Voice cloning functionality",
+    )
+    if settings.voice_cloning_enabled:
+        table.add_row("XTTS Model", settings.xtts_model, "Voice cloning model")
+        table.add_row(
+            "Voice Speed", f"{settings.voice_cloning_speed}x", "Default speech speed"
+        )
+        table.add_row(
+            "Voice Temperature",
+            f"{settings.voice_cloning_temperature}",
+            "Model temperature",
+        )
+
     # Cache settings
     table.add_row("Cache Dir", str(settings.cache_dir), "Cache directory")
     table.add_row("Model Cache", str(settings.model_cache_dir), "Model cache directory")
@@ -469,7 +710,9 @@ def config() -> None:
 def status() -> None:
     """Show system status and model information."""
     console.print(
-        Panel("🔍 Checking system status...", title="System Status", border_style="blue")
+        Panel(
+            "🔍 Checking system status...", title="System Status", border_style="blue"
+        )
     )
 
     # Check model availability
@@ -492,8 +735,6 @@ def status() -> None:
 
     # Check Transformers
     try:
-        import torch
-
         transformers_status = "✅ Available"
         transformers_details = f"PyTorch: {torch.__version__}"
     except ImportError:
@@ -513,6 +754,20 @@ def status() -> None:
         audio_details = "pip install sounddevice"
 
     status_table.add_row("Audio Capture", audio_status, audio_details)
+
+    # Check Voice Cloning
+    try:
+        pass
+
+        voice_status = "✅ Available"
+        voice_details = f"XTTS: {settings.xtts_model}"
+        if not settings.voice_cloning_enabled:
+            voice_status += " (Disabled)"
+    except ImportError:
+        voice_status = "❌ Not installed"
+        voice_details = "pip install TTS"
+
+    status_table.add_row("Voice Cloning", voice_status, voice_details)
 
     console.print(status_table)
 

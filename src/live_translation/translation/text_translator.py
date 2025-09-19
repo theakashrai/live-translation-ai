@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
+
+from transformers.pipelines import pipeline
 
 from live_translation.core.config import settings
 from live_translation.core.exceptions import ModelLoadError, TranslationError
@@ -20,8 +22,8 @@ class SimpleTranslator(BaseTranslationEngine):
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
     ) -> None:
         model_name = model_name or "mock-translator"
         device = device or "cpu"
@@ -59,7 +61,7 @@ class SimpleTranslator(BaseTranslationEngine):
         self,
         audio_data: bytes,
         sample_rate: int = 16000,
-        language: Optional[str] = None,
+        language: str | None = None,
     ) -> tuple[str, str]:
         """Mock transcription implementation for STT engine compatibility."""
         # Mock transcription that returns predictable text based on audio length
@@ -84,8 +86,8 @@ class TransformersTranslator(BaseTranslationEngine):
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
     ) -> None:
         model_name = model_name or settings.translation_model
         device = device or DeviceManager.get_optimal_device()
@@ -98,8 +100,6 @@ class TransformersTranslator(BaseTranslationEngine):
     def _load_model(self) -> Any:
         """Load the translation model using transformers pipeline."""
         try:
-            from transformers import pipeline
-
             logger.info(f"Loading translation model: {self.model_name}")
 
             # Use transformers built-in device handling with fallback
@@ -194,6 +194,6 @@ class TransformersTranslator(BaseTranslationEngine):
         """Detect the language of the given text."""
         return self._language_detector.detect(text)
 
-    def get_supported_languages(self) -> Dict[str, str]:
+    def get_supported_languages(self) -> dict[str, str]:
         """Get supported language codes and names."""
         return self._language_mapper.get_supported_languages()

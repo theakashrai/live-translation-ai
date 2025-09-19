@@ -8,7 +8,6 @@ Run this script to see some example translations.
 
 import asyncio
 import time
-from typing import List, Tuple
 
 from live_translation.core.models import LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
@@ -50,7 +49,7 @@ async def main() -> None:
     print()
 
     # Common English phrases to translate to Hindi
-    phrases_to_translate: List[Tuple[str, str]] = [
+    phrases_to_translate: list[tuple[str, str]] = [
         ("Hello, how are you?", "Basic greeting"),
         ("Good morning!", "Morning greeting"),
         ("Good evening!", "Evening greeting"),
@@ -97,13 +96,12 @@ async def main() -> None:
     print("📊 Summary:")
     print(f"✅ Translated {len(phrases_to_translate)} phrases")
     print(f"⏱️  Total time: {total_duration:.1f}ms")
-    print(
-        f"📈 Average per phrase: {total_duration/len(phrases_to_translate):.1f}ms")
+    print(f"📈 Average per phrase: {total_duration/len(phrases_to_translate):.1f}ms")
     print()
     print("💡 Try these CLI commands:")
     print('   translate text "Hello, world!" --source en --target hi')
-    print('   translate text --interactive --source en --target hi')
-    print('   translate audio --source en --target hi --duration 10')
+    print("   translate text --interactive --source en --target hi")
+    print("   translate audio --source en --target hi --duration 10")
     print()
     print("🎉 English to Hindi translation examples completed!")
 

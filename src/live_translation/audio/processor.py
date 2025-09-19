@@ -2,7 +2,8 @@
 
 import asyncio
 import time
-from typing import Any, AsyncGenerator, Callable, Optional
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
 
 import numpy as np
 
@@ -26,8 +27,8 @@ class AudioProcessor:
     def __init__(
         self,
         translation_pipeline: TranslationPipeline,
-        chunk_duration_s: Optional[float] = None,
-        vad_threshold: Optional[float] = None,
+        chunk_duration_s: float | None = None,
+        vad_threshold: float | None = None,
         source_language: str = "auto",
         target_language: str = "en",
     ) -> None:
@@ -61,7 +62,7 @@ class AudioProcessor:
         self.successful_translations = 0
         self.failed_translations = 0
 
-    def process_audio_chunk(self, chunk: AudioChunk) -> Optional[TranslationResponse]:
+    def process_audio_chunk(self, chunk: AudioChunk) -> TranslationResponse | None:
         """Process a single audio chunk.
 
         Args:
@@ -158,7 +159,7 @@ class AudioProcessor:
             logger.warning(f"Voice activity detection failed: {e}")
             return False
 
-    def _perform_translation(self, start_time: float) -> Optional[TranslationResponse]:
+    def _perform_translation(self, start_time: float) -> TranslationResponse | None:
         """Perform translation on buffered audio.
 
         Args:
@@ -257,11 +258,9 @@ class StreamingTranslator:
         self.source_language = source_language
         self.target_language = target_language
 
-        self.audio_capture: Optional[AudioCapture] = None
-        self.audio_processor: Optional[AudioProcessor] = None
-        self.translation_callback: Optional[
-            Callable[[TranslationResponse], None]
-        ] = None
+        self.audio_capture: AudioCapture | None = None
+        self.audio_processor: AudioProcessor | None = None
+        self.translation_callback: Callable[[TranslationResponse], None] | None = None
 
         self.is_streaming = False
         self._stop_event = asyncio.Event()
@@ -269,7 +268,7 @@ class StreamingTranslator:
     async def start_streaming(
         self,
         translation_callback: Callable[[TranslationResponse], None],
-        device: Optional[int] = None,
+        device: int | None = None,
     ) -> None:
         """Start real-time streaming translation."""
         if self.is_streaming:

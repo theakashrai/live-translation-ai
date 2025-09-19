@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import numpy as np
 from langchain_core.documents import Document
@@ -21,8 +20,8 @@ class WhisperStreamProcessor:
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
         chunk_length_s: int = 30,
     ) -> None:
         """Initialize the stream processor."""
@@ -33,9 +32,7 @@ class WhisperStreamProcessor:
         self._target_sample_rate = 16000
         self._audio_processor = WhisperAudioProcessor()
 
-    def add_audio_chunk(
-        self, audio_data: bytes, sample_rate: int
-    ) -> Optional[Document]:
+    def add_audio_chunk(self, audio_data: bytes, sample_rate: int) -> Document | None:
         """Add audio chunk using standard library processing."""
         try:
             # Use standard library to process chunk
@@ -75,7 +72,7 @@ class WhisperStreamProcessor:
             logger.error(f"Error processing audio chunk: {e}")
             return None
 
-    def flush_buffer(self) -> Optional[Document]:
+    def flush_buffer(self) -> Document | None:
         """Flush remaining audio using standard libraries."""
         if self.audio_chunks:
             try:

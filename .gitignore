@@ -251,6 +251,7 @@ poetry.lock
 .coverage.*
 test-results/
 test-outputs/
+temp-data/
 
 # Documentation build
 docs/build/

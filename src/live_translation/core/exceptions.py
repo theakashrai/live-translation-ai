@@ -1,7 +1,7 @@
 """Custom exceptions for the live translation system."""
 
 import traceback
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 
 class LiveTranslationError(Exception):
@@ -10,9 +10,9 @@ class LiveTranslationError(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -23,7 +23,7 @@ class LiveTranslationError(Exception):
         # Store stack trace for debugging
         self.stack_trace = traceback.format_stack()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for logging/serialization."""
         return {
             "error_type": self.__class__.__name__,
@@ -35,10 +35,10 @@ class LiveTranslationError(Exception):
 
     @classmethod
     def from_exception(
-        cls: Type["LiveTranslationError"],
+        cls: type["LiveTranslationError"],
         exc: Exception,
-        message: Optional[str] = None,
-        error_code: Optional[str] = None,
+        message: str | None = None,
+        error_code: str | None = None,
         **details: Any,
     ) -> "LiveTranslationError":
         """Create a LiveTranslationError from another exception."""
@@ -64,7 +64,7 @@ class ConfigurationError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        config_key: Optional[str] = None,
+        config_key: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -79,8 +79,8 @@ class ModelLoadError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        model_name: Optional[str] = None,
-        model_type: Optional[str] = None,
+        model_name: str | None = None,
+        model_type: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -97,8 +97,8 @@ class AudioCaptureError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        device_id: Optional[int] = None,
-        sample_rate: Optional[int] = None,
+        device_id: int | None = None,
+        sample_rate: int | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -115,8 +115,8 @@ class AudioProcessingError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        audio_length: Optional[int] = None,
-        processing_stage: Optional[str] = None,
+        audio_length: int | None = None,
+        processing_stage: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -133,9 +133,9 @@ class TranslationError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        source_lang: Optional[str] = None,
-        target_lang: Optional[str] = None,
-        text_length: Optional[int] = None,
+        source_lang: str | None = None,
+        target_lang: str | None = None,
+        text_length: int | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -154,7 +154,7 @@ class LanguageDetectionError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        text_sample: Optional[str] = None,
+        text_sample: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -172,8 +172,8 @@ class UnsupportedLanguageError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        language_code: Optional[str] = None,
-        supported_languages: Optional[list[str]] = None,
+        language_code: str | None = None,
+        supported_languages: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -190,8 +190,8 @@ class InvalidInputError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        input_type: Optional[str] = None,
-        validation_rule: Optional[str] = None,
+        input_type: str | None = None,
+        validation_rule: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -208,8 +208,8 @@ class ResourceNotFoundError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        resource_path: Optional[str] = None,
-        resource_type: Optional[str] = None,
+        resource_path: str | None = None,
+        resource_type: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -226,9 +226,9 @@ class PerformanceError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        operation: Optional[str] = None,
-        duration_ms: Optional[float] = None,
-        threshold_ms: Optional[float] = None,
+        operation: str | None = None,
+        duration_ms: float | None = None,
+        threshold_ms: float | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})
@@ -247,8 +247,8 @@ class DeviceError(LiveTranslationError):
     def __init__(
         self,
         message: str,
-        device_type: Optional[str] = None,
-        device_id: Optional[str] = None,
+        device_type: str | None = None,
+        device_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         details = kwargs.pop("details", {})

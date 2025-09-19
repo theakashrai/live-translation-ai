@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import whisper
 from langchain_core.documents import Document
@@ -21,8 +21,8 @@ class WhisperTranscriber:
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
     ) -> None:
         """Initialize the Whisper transcriber.
 
@@ -32,7 +32,7 @@ class WhisperTranscriber:
         """
         self.model_name = model_name or settings.whisper_model
         self.device = device or DeviceManager.get_optimal_device()
-        self._model: Optional[Any] = None
+        self._model: Any | None = None
         self._device_manager = DeviceManager()
         self._audio_processor = WhisperAudioProcessor()
 
@@ -40,7 +40,7 @@ class WhisperTranscriber:
         self,
         audio_data: bytes,
         sample_rate: int = 16000,
-        language: Optional[str] = None,
+        language: str | None = None,
     ) -> Document:
         """Transcribe audio data and return as Document.
 

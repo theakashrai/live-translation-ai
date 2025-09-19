@@ -3,7 +3,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-
 from live_translation.core.models import LanguageCode, TranslationRequest
 from live_translation.translation.engine import TranslationPipeline
 from live_translation.translation.text_translator import SimpleTranslator

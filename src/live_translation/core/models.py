@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -58,18 +58,18 @@ class TranslationRequest(BaseModel):
     """Request model for translation operations."""
 
     # Required fields
-    source_language: Union[LanguageCode, str] = Field(
+    source_language: LanguageCode | str = Field(
         default=LanguageCode.AUTO, description="Source language code"
     )
-    target_language: Union[LanguageCode, str] = Field(
+    target_language: LanguageCode | str = Field(
         default=LanguageCode.ENGLISH, description="Target language code"
     )
 
     # Input data (one must be provided)
-    text: Optional[str] = Field(
+    text: str | None = Field(
         default=None, max_length=5000, description="Text to translate"
     )
-    audio_data: Optional[bytes] = Field(default=None, description="Audio data as bytes")
+    audio_data: bytes | None = Field(default=None, description="Audio data as bytes")
 
     # Audio settings
     sample_rate: int = Field(
@@ -97,7 +97,7 @@ class TranslationRequest(BaseModel):
 
     @field_validator("source_language", "target_language")
     @classmethod
-    def validate_language_codes(cls, v: Union[LanguageCode, str]) -> str:
+    def validate_language_codes(cls, v: LanguageCode | str) -> str:
         """Validate language codes."""
         if isinstance(v, LanguageCode):
             return v.value
@@ -114,7 +114,7 @@ class TranslationResponse(BaseModel):
     translated_text: str = Field(description="Translated text")
 
     # Language information
-    detected_language: Optional[str] = Field(
+    detected_language: str | None = Field(
         default=None, description="Detected source language code"
     )
 
@@ -130,14 +130,14 @@ class TranslationResponse(BaseModel):
     timestamp: datetime = Field(
         default_factory=datetime.now, description="Response timestamp"
     )
-    request_id: Optional[str] = Field(default=None, description="Associated request ID")
-    model_info: Optional[dict[str, Any]] = Field(
+    request_id: str | None = Field(default=None, description="Associated request ID")
+    model_info: dict[str, Any] | None = Field(
         default=None, description="Information about models used"
     )
 
     @field_validator("detected_language")
     @classmethod
-    def validate_detected_language(cls, v: Optional[str]) -> Optional[str]:
+    def validate_detected_language(cls, v: str | None) -> str | None:
         """Validate detected language code."""
         if v is not None and not LanguageCode.is_valid(v):
             # Don't fail validation, just warn in logs if needed
@@ -176,10 +176,10 @@ class TranslationJob(BaseModel):
     )
     request: TranslationRequest = Field(description="Original translation request")
     status: JobStatus = Field(default=JobStatus.PENDING, description="Job status")
-    response: Optional[TranslationResponse] = Field(
+    response: TranslationResponse | None = Field(
         default=None, description="Translation response if completed"
     )
-    error_message: Optional[str] = Field(
+    error_message: str | None = Field(
         default=None, description="Error message if failed"
     )
     created_at: datetime = Field(
@@ -246,5 +246,5 @@ class SystemStatus(BaseModel):
 
 
 # Type aliases for common use cases
-TranslationInput = Union[str, bytes]
-LanguageCodeType = Union[LanguageCode, str]
+TranslationInput = str | bytes
+LanguageCodeType = LanguageCode | str

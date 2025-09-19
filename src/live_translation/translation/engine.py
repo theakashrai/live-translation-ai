@@ -2,7 +2,9 @@
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Protocol, Tuple
+from typing import Any, Protocol
+
+from langdetect import detect
 
 from live_translation.core.exceptions import ModelLoadError, TranslationError
 from live_translation.core.models import (
@@ -77,8 +79,8 @@ class SpeechToTextEngine(Protocol):
         self,
         audio_data: bytes,
         sample_rate: int = 16000,
-        language: Optional[str] = None,
-    ) -> Tuple[str, str]:
+        language: str | None = None,
+    ) -> tuple[str, str]:
         """Transcribe audio to text.
 
         Args:
@@ -189,7 +191,7 @@ class BaseSpeechToTextEngine(BaseModelEngine):
 
     @abstractmethod
     def _transcribe_impl(
-        self, audio_data: bytes, sample_rate: int, language: Optional[str]
+        self, audio_data: bytes, sample_rate: int, language: str | None
     ) -> tuple[str, str]:
         """Implement the actual transcription logic."""
 
@@ -197,7 +199,7 @@ class BaseSpeechToTextEngine(BaseModelEngine):
         self,
         audio_data: bytes,
         sample_rate: int = 16000,
-        language: Optional[str] = None,
+        language: str | None = None,
     ) -> tuple[str, str]:
         """Transcribe audio to text."""
         if not self._loaded:
@@ -308,8 +310,6 @@ class TranslationPipeline:
                 return self.translation_engine.detect_language(text)
 
             # Fallback to simple language detection
-            from langdetect import detect
-
             return detect(text)
         except Exception:
             # Default fallback

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import Document
@@ -26,9 +26,9 @@ class WhisperDocumentLoader(BaseLoader):
     def __init__(
         self,
         file_path: str,
-        model_name: Optional[str] = None,
-        device: Optional[str] = None,
-        language: Optional[str] = None,
+        model_name: str | None = None,
+        device: str | None = None,
+        language: str | None = None,
     ) -> None:
         """Initialize the Whisper document loader.
 

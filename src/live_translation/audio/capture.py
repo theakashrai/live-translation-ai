@@ -3,7 +3,8 @@
 import queue
 import threading
 import time
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import sounddevice as sd
@@ -24,7 +25,7 @@ class AudioCapture:
         sample_rate: int = 16000,
         channels: int = 1,
         chunk_size: int = 1024,
-        device: Optional[int] = None,
+        device: int | None = None,
         max_queue_size: int = 100,
     ) -> None:
         """Initialize audio capture.
@@ -45,8 +46,8 @@ class AudioCapture:
         # State management
         self.is_recording = False
         self.audio_queue: queue.Queue[AudioChunk] = queue.Queue(maxsize=max_queue_size)
-        self.stream: Optional[sd.InputStream] = None
-        self.callback_fn: Optional[Callable[[AudioChunk], None]] = None
+        self.stream: sd.InputStream | None = None
+        self.callback_fn: Callable[[AudioChunk], None] | None = None
         self.sequence_id = 0
         self._lock = threading.Lock()
 
@@ -99,7 +100,7 @@ class AudioCapture:
             ) from e
 
     def start_recording(
-        self, callback: Optional[Callable[[AudioChunk], None]] = None
+        self, callback: Callable[[AudioChunk], None] | None = None
     ) -> None:
         """Start recording audio."""
         if self.is_recording:
@@ -214,7 +215,7 @@ class AudioCapture:
         except Exception as e:
             logger.error(f"Error stopping audio recording: {str(e)}")
 
-    def get_audio_chunk(self, timeout: Optional[float] = None) -> Optional[AudioChunk]:
+    def get_audio_chunk(self, timeout: float | None = None) -> AudioChunk | None:
         """Get the next audio chunk from the queue."""
         try:
             return self.audio_queue.get(timeout=timeout)
@@ -305,8 +306,8 @@ class AudioBuffer:
 
         # Voice activity detection
         self.vad_history: list[bool] = []
-        self.speech_start_idx: Optional[int] = None
-        self.speech_end_idx: Optional[int] = None
+        self.speech_start_idx: int | None = None
+        self.speech_end_idx: int | None = None
 
     def add_audio(self, audio_data: bytes) -> None:
         """Add audio data to the buffer."""
@@ -320,7 +321,7 @@ class AudioBuffer:
             self.write_pos = (self.write_pos + 1) % self.max_samples
             self.samples_written += 1
 
-    def get_speech_segment(self) -> Optional[np.ndarray]:
+    def get_speech_segment(self) -> np.ndarray | None:
         """Extract speech segment from buffer based on VAD."""
         if self.samples_written == 0:
             return None
@@ -335,19 +336,14 @@ class AudioBuffer:
         if self.samples_written < self.max_samples:
             # Buffer not full yet
             return self.buffer[: self.samples_written].copy()
+        # Buffer is full, extract from circular buffer
+        elif self.write_pos >= segment_samples:
+            return self.buffer[self.write_pos - segment_samples : self.write_pos].copy()
         else:
-            # Buffer is full, extract from circular buffer
-            if self.write_pos >= segment_samples:
-                return self.buffer[
-                    self.write_pos - segment_samples : self.write_pos
-                ].copy()
-            else:
-                # Wrap around
-                part1 = self.buffer[
-                    self.max_samples - (segment_samples - self.write_pos) :
-                ]
-                part2 = self.buffer[: self.write_pos]
-                return np.concatenate([part1, part2])
+            # Wrap around
+            part1 = self.buffer[self.max_samples - (segment_samples - self.write_pos) :]
+            part2 = self.buffer[: self.write_pos]
+            return np.concatenate([part1, part2])
 
     def clear(self) -> None:
         """Clear the buffer."""

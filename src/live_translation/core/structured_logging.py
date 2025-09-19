@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from structlog.types import Processor
@@ -93,7 +93,7 @@ def configure_logging(
 
 
 def get_logger(
-    name: Optional[str] = None, **initial_values: Any
+    name: str | None = None, **initial_values: Any
 ) -> structlog.stdlib.BoundLogger:
     """
     Get a structlog logger instance.

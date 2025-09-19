@@ -1,8 +1,10 @@
 """Configuration management using pydantic-settings."""
 
+import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
+import torch
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,7 +39,7 @@ class Settings(BaseSettings):
         default=30, ge=5, le=60, description="Audio chunk length in seconds"
     )
     channels: int = Field(default=1, ge=1, le=2, description="Number of audio channels")
-    audio_device: Optional[int] = Field(
+    audio_device: int | None = Field(
         default=None, description="Audio device index (None for default)"
     )
 
@@ -109,6 +111,33 @@ class Settings(BaseSettings):
         default=True, description="Enable automatic language detection"
     )
 
+    # Voice cloning settings
+    voice_cloning_enabled: bool = Field(
+        default=False, description="Enable voice cloning functionality"
+    )
+    xtts_model: str = Field(
+        default="tts_models/multilingual/multi-dataset/xtts_v2",
+        description="XTTS model name for voice cloning",
+    )
+    voice_cloning_speed: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=3.0,
+        description="Default speech speed for voice cloning",
+    )
+    voice_cloning_temperature: float = Field(
+        default=0.75,
+        ge=0.1,
+        le=1.0,
+        description="Model temperature for voice generation",
+    )
+    voice_sample_rate: int = Field(
+        default=22050,
+        ge=8000,
+        le=48000,
+        description="Sample rate for synthesized voice audio",
+    )
+
     @field_validator("cache_dir", "model_cache_dir", mode="before")
     @classmethod
     def expand_path(cls, v: str | Path) -> Path:
@@ -125,8 +154,6 @@ class Settings(BaseSettings):
             # Auto-detect best available device
             # Note: CPU is preferred over MPS for stability with Whisper/NLLB models
             try:
-                import torch
-
                 if torch.cuda.is_available():
                     return "cuda"
                 elif torch.backends.mps.is_available():
@@ -140,20 +167,16 @@ class Settings(BaseSettings):
 
         if v == "cuda":
             try:
-                import torch
-
                 if not torch.cuda.is_available():
                     raise ValueError("CUDA is not available")
-            except ImportError:
-                raise ValueError("PyTorch is not installed")
+            except ImportError as e:
+                raise ValueError("PyTorch is not installed") from e
         elif v == "mps":
             try:
-                import torch
-
                 if not torch.backends.mps.is_available():
                     raise ValueError("MPS is not available")
-            except ImportError:
-                raise ValueError("PyTorch is not installed")
+            except ImportError as e:
+                raise ValueError("PyTorch is not installed") from e
         return v
 
     @model_validator(mode="after")
@@ -166,15 +189,13 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: Any) -> None:
         """Create cache directories after initialization."""
         if self.clear_cache_on_startup:
-            import shutil
-
             if self.cache_dir.exists():
                 shutil.rmtree(self.cache_dir)
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.model_cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about configured models."""
         return {
             "whisper_model": self.whisper_model,
@@ -183,7 +204,7 @@ class Settings(BaseSettings):
             "model_cache_dir": str(self.model_cache_dir),
         }
 
-    def get_audio_config(self) -> Dict[str, Any]:
+    def get_audio_config(self) -> dict[str, Any]:
         """Get audio configuration."""
         return {
             "sample_rate": self.sample_rate,
@@ -194,7 +215,17 @@ class Settings(BaseSettings):
             "silence_duration": self.silence_duration,
         }
 
-    def get_supported_languages(self) -> List[str]:
+    def get_voice_cloning_config(self) -> dict[str, Any]:
+        """Get voice cloning configuration."""
+        return {
+            "enabled": self.voice_cloning_enabled,
+            "xtts_model": self.xtts_model,
+            "speed": self.voice_cloning_speed,
+            "temperature": self.voice_cloning_temperature,
+            "sample_rate": self.voice_sample_rate,
+        }
+
+    def get_supported_languages(self) -> list[str]:
         """Get list of supported language codes."""
         return [
             "auto",

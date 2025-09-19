@@ -8,7 +8,8 @@ A locally-run, privacy-first live translation tool that provides real-time trans
 - **⚡ Real-Time**: Sub-second translation latency for live audio
 - **🎯 Multi-Modal**: Support for audio, text, and file inputs
 - **🌍 Multi-Language**: Support for 12+ major languages
-- **🏗️ Modern Architecture**: Built with Python 3.11+, Poetry, Pydantic, and type safety
+- **� Voice Cloning**: Clone voices and synthesize translated speech using XTTS
+- **�🏗️ Modern Architecture**: Built with Python 3.11+, Poetry, Pydantic, and type safety
 - **📱 Easy CLI**: Simple command-line interface with rich output
 
 ## 🚀 Quick Start
@@ -82,6 +83,36 @@ translate audio --source en --target hi --duration 30
 
 # Translate from stdin (useful for piping)
 echo "Welcome to our application" | translate text --target hi
+```
+
+### Voice Cloning Examples
+
+```bash
+# Enable voice cloning in settings
+export TRANSLATION_VOICE_CLONING_ENABLED=true
+
+# Clone voice and synthesize translated text
+translate voice-clone "Hello, how are you today?" \
+  --source en --target es \
+  --reference examples/my_voice.wav \
+  --output cloned_spanish.wav
+
+# Use voice cloning with text command
+translate text "Good morning!" \
+  --source en --target fr \
+  --voice-clone examples/reference_voice.wav \
+  --save-audio morning_fr.wav
+
+# Interactive mode with voice cloning
+translate text --interactive \
+  --source en --target de \
+  --voice-clone examples/reference_voice.wav
+
+# Check voice cloning status
+translate status  # Shows if TTS is available
+
+# Run voice cloning demo
+./examples/voice_cloning_demo.sh
 ```
 
 ## 📖 Usage
